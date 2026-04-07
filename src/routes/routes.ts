@@ -1,6 +1,6 @@
 import { clientsRoutes } from "@/controllers/clients"
 import { supplierRoutes } from "@/controllers/suppliers"
-import { FastifyTypeInstance } from "../types" // 
+import { FastifyTypeInstance } from "../types" 
 import { ordersRoutes } from "@/controllers/orders"
 import { stockRoutes } from "@/controllers/stock"
 import { shoppingRoutes } from "@/controllers/shopping"

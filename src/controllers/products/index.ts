@@ -100,20 +100,20 @@ export async function productsRoutes(app: FastifyTypeInstance) {
         price,
         banner,
         emoji,
-        quantity: 0,                    // começa em 0
+        quantity: 0,                    
         image:    imagePath || "",
       }
     })
 
     // Cria o Stock automaticamente
-    await prisma.stock.create({
-      data: {
-        productId:   product.id,
-        quantity:    0,
-        value_Total: 0,
-        status:      "Estoque_Baixo"    // começa vazio
-      }
-    })
+    // await prisma.stock.create({
+    //   data: {
+    //     productId:   product.id,
+    //     quantity:    0,
+    //     value_Total: 0,
+    //     status:      "Estoque_Baixo"   
+    //   }
+    // })
 
     return reply.status(201).send({ id: product.id })
   })

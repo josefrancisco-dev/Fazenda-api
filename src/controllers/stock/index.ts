@@ -80,34 +80,6 @@ export async function stockRoutes(app: FastifyTypeInstance) {
     return stock
   })
 
-  // ➕ CRIAR
-//  app.post("/", {
-//   schema: {
-//     tags: ["stock"],
-//     body: stockBodySchema,
-//     response: {
-//       201: stockResponseSchema,
-//       400: z.object({ message: z.string() })
-//     }
-//   }
-// }, async (request, reply) => {
-
-//   const exists = await prisma.stock.findUnique({
-//     where: { productId: request.body.productId }
-//   })
-
-//   if (exists) {
-//     return reply.status(400).send({
-//       message: "Este produto já possui stock"
-//     })
-//   }
-
-//   const stock = await prisma.stock.create({
-//     data: request.body
-//   })
-
-//   return reply.status(201).send(stock)
-// })
 
 // ➕ CRIAR
 app.post("/", {
