@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum PersonStatus {
+  Customer
+  Lead
+  Active
+}
+
+enum StockStatus {
+  Em_Estoque
+  Estoque_Medio
+  Estoque_Baixo
+}
+
+model Client {
+  id      String       @id @default(uuid())
+  name    String
+  role    String
+  status  PersonStatus
+  date    String
+  company String
+  email   String       @unique
+  phone   String
+  nif     String       @unique
+  avatar  String?
+
+  orders Order[]
+
+  @@map("clients")
+}
+
+model Shopping {
+  id         String   @id @default(uuid())
+  number     Int      @unique
+  supplierId String
+  supplier   Supplier @relation(fields: [supplierId], references: [id])
+  date       String
+  total      Float
+  status     Boolean  @default(false)
+
+  items ShoppingItem[]
+
+  @@map("shoppings")
+}
+
+model ShoppingItem {
+  id         String   @id @default(uuid())
+  name       String
+  quantity   Int
+  price      Float
+  shoppingId String
+  shopping   Shopping @relation(fields: [shoppingId], references: [id])
+
+  @@map("shoppingItem")
+}
+
+model Supplier {
+  id      String       @id @default(uuid())
+  name    String
+  role    String
+  status  PersonStatus
+  date    String
+  company String
+  email   String       @unique
+  phone   String
+  nif     String       @unique
+  avatar  String?
+
+  shoppings Shopping[]
+
+  @@map("suppliers")
+}
+
+model Product {
+  id         String      @id @default(uuid())
+  name       String
+  category   String
+  quantity   Int
+  unit       String
+  price      Float
+  banner     String
+  emoji      String
+  image      String
+  stocks     Stock[]
+  orderItems OrderItem[]
+
+  @@map("products")
+}
+
+model Stock {
+  id          String      @id @default(uuid())
+  quantity    Int
+  value_Total Float
+  status      StockStatus
+  productId   String      @unique
+  product     Product     @relation(fields: [productId], references: [id])
+
+  @@map("stocks")
+}
+
+model Order {
+  id       String  @id @default(uuid())
+  number   Int     @unique
+  date     String
+  total    Float
+  status   Boolean @default(false)
+  clientId String
+  client   Client  @relation(fields: [clientId], references: [id])
+
+  items OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  quantity  Int
+  price     Float
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id])
+
+  @@map("orderItems")
+}
