@@ -3,12 +3,6 @@ import prisma from "../../../prisma"
 import bcrypt from 'bcryptjs'
 import z from 'zod'
 
-const loginResponseSchema = z.object({
-  email : z.string(),
-  password : z.string(),
-  role :  z.string()
-})
-
 export async function authRoutes(app: FastifyTypeInstance) {
 
   app.post('/login', async (request, reply) => {
@@ -50,7 +44,8 @@ export async function authRoutes(app: FastifyTypeInstance) {
       {
       id : true,
       name: true,
-      email: true
+      email: true,
+      role: true
       }
 
     })

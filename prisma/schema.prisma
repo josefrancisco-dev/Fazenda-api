@@ -18,21 +18,6 @@ enum Role {
   Admin
 }
 
-enum AccessLevel {
-  Client
-  Supplier
-  Admin
-}
-
-// model Roles {
-//   id          String      @id @default(uuid())
-//   name        String
-//   accessLevel AccessLevel
-//   description String
-//   countUser   String
-//   clients     Client[]
-// }
-
 enum StockStatus {
   Em_Estoque
   Estoque_Medio
@@ -53,8 +38,6 @@ model Client {
   password String
   orders   Order[]
 
-  // rolesId  String?
-  // roles    Roles?       @relation(fields: [rolesId], references: [id])
   @@map("clients")
 }
 
