@@ -12,6 +12,27 @@ enum PersonStatus {
   Active
 }
 
+enum Role {
+  Client
+  Supplier
+  Admin
+}
+
+enum AccessLevel {
+  Client
+  Supplier
+  Admin
+}
+
+// model Roles {
+//   id          String      @id @default(uuid())
+//   name        String
+//   accessLevel AccessLevel
+//   description String
+//   countUser   String
+//   clients     Client[]
+// }
+
 enum StockStatus {
   Em_Estoque
   Estoque_Medio
@@ -19,19 +40,21 @@ enum StockStatus {
 }
 
 model Client {
-  id      String       @id @default(uuid())
-  name    String
-  role    String
-  status  PersonStatus
-  date    String
-  company String
-  email   String       @unique
-  phone   String
-  nif     String       @unique
-  avatar  String?
+  id       String       @id @default(uuid())
+  name     String
+  role     Role
+  status   PersonStatus
+  date     String
+  company  String
+  email    String       @unique
+  phone    String
+  nif      String       @unique
+  avatar   String?
+  password String
+  orders   Order[]
 
-  orders Order[]
-
+  // rolesId  String?
+  // roles    Roles?       @relation(fields: [rolesId], references: [id])
   @@map("clients")
 }
 

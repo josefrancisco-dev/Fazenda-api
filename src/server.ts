@@ -7,15 +7,16 @@ import { ZodTypeProvider } from "fastify-type-provider-zod";
 import { registerRoutes } from "./routes/routes";
 import fastifyStatic from "@fastify/static"
 import path from "node:path"
-
-
+import jwt from "./plugins/jwt";
 
 const app = fastify().withTypeProvider<ZodTypeProvider>()
-
 app.register(fastifyCors, {origin : "*"})
 
 app.setValidatorCompiler(validatorCompiler)
 app.setSerializerCompiler(serializerCompiler)
+
+// 🔐 REGISTRA JWT (ANTES DAS ROTAS)
+app.register(jwt)
 
 app.register(fastifySwagger, {
   openapi :  {
@@ -35,9 +36,7 @@ app.register(fastifyStatic, {
   prefix: "/uploads/",          
 })
 
-
 registerRoutes(app)
-
 
 app.listen({port: 3333}).then(() => {
   console.log("Http server runing !")

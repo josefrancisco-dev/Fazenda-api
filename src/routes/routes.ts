@@ -5,8 +5,10 @@ import { ordersRoutes } from "@/controllers/orders"
 import { stockRoutes } from "@/controllers/stock"
 import { shoppingRoutes } from "@/controllers/shopping"
 import { productsRoutes } from "@/controllers/products"
+import { authRoutes } from "@/controllers/authenticantion"
 
 export function registerRoutes(app: FastifyTypeInstance) { 
+  app.register(authRoutes, { prefix: '/auth' })
   app.register(clientsRoutes,   { prefix: "/clients" })
   app.register(supplierRoutes,  { prefix: "/suppliers" })
   app.register(ordersRoutes,    { prefix: "/orders" })
