@@ -1,7 +1,5 @@
 import { FastifyTypeInstance } from "../../types"
 import prisma from "../../../prisma"
-import bcrypt from 'bcryptjs'
-import z from 'zod'
 
 export async function authRoutes(app: FastifyTypeInstance) {
 
@@ -15,9 +13,7 @@ export async function authRoutes(app: FastifyTypeInstance) {
     if (!user) {
       return reply.status(400).send({ error: "User not found" })
     }
-
     // const isValid = await bcrypt.compare(password, user.password)
-
     const isValid = await password === user.password
 
     if (!isValid) {
@@ -55,5 +51,9 @@ export async function authRoutes(app: FastifyTypeInstance) {
     }
 
     return replay.send({client})
+  })
+
+  app.get('/logout', { preHandler: [app.authenticate] }, async (req, reply) => {
+    return reply.send({ message: "Logout realizado com sucesso" })
   })
 }
