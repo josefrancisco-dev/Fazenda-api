@@ -27,6 +27,7 @@ export async function productsRoutes(app: FastifyTypeInstance) {
 
   // GET ALL
   app.get("/", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["products"],
       response: { 200: z.array(productResponseSchema) }
@@ -39,6 +40,7 @@ export async function productsRoutes(app: FastifyTypeInstance) {
 
   // GET ONE
   app.get("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["products"],
       params: z.object({ id: z.string().uuid() }),
@@ -59,6 +61,7 @@ export async function productsRoutes(app: FastifyTypeInstance) {
 
   // POST
   app.post("/", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["products"],
       description: "Create a new product (multipart/form-data)",
@@ -110,6 +113,7 @@ export async function productsRoutes(app: FastifyTypeInstance) {
 
   // PUT
   app.put("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["products"],
       description: "Update a product (multipart/form-data)",
@@ -156,6 +160,7 @@ export async function productsRoutes(app: FastifyTypeInstance) {
 
   // DELETE
   app.delete("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["products"],
       params: z.object({ id: z.string().uuid() }),

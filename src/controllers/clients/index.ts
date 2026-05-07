@@ -23,7 +23,7 @@ export async function clientsRoutes(app: FastifyTypeInstance) {
 
   // GET ALL
   app.get("/", {
-    // preHandler: [app.authenticate],
+    preHandler: [app.authenticate],
     schema: {
       tags: ["clients"],
       description: "List all clients",
@@ -37,6 +37,7 @@ export async function clientsRoutes(app: FastifyTypeInstance) {
 
   // GET ONE
   app.get("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["clients"],
       description: "Get client by ID",
@@ -58,6 +59,7 @@ export async function clientsRoutes(app: FastifyTypeInstance) {
 
   // POST
   app.post("/", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["clients"],
       description: "Create a new client",
@@ -93,6 +95,7 @@ export async function clientsRoutes(app: FastifyTypeInstance) {
 
   // PUT
   app.put("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["clients"],
       description: "Update a client fully",
@@ -120,6 +123,7 @@ export async function clientsRoutes(app: FastifyTypeInstance) {
 
   // PATCH
   app.patch("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["clients"],
       description: "Partially update a client",
@@ -147,6 +151,7 @@ export async function clientsRoutes(app: FastifyTypeInstance) {
 
   // DELETE
   app.delete("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["clients"],
       description: "Delete a client",

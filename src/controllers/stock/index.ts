@@ -2,21 +2,18 @@ import z from "zod"
 import { FastifyTypeInstance } from "../../types"
 import prisma from "prisma"
 
-// 🔁 Enum igual ao Prisma
 const stockStatusEnum = z.enum([
   "Em_Estoque",
   "Estoque_Medio",
   "Estoque_Baixo"
 ])
 
-// 🧠 função para calcular status
 function getStockStatus(quantity: number) {
   if (quantity <= 5) return "Estoque_Baixo"
   if (quantity <= 20) return "Estoque_Medio"
   return "Em_Estoque"
 }
 
-// 📦 RESPONSE
 const stockResponseSchema = z.object({
   id: z.string().uuid(),
   quantity: z.number(),
@@ -31,7 +28,7 @@ const stockResponseSchema = z.object({
   }).optional()
 })
 
-// 📝 BODY
+
 const stockBodySchema = z.object({
   quantity: z.number().min(0),
   value_Total: z.number().min(0),
@@ -40,8 +37,8 @@ const stockBodySchema = z.object({
 
 export async function stockRoutes(app: FastifyTypeInstance) {
 
-  // 🔍 LISTAR
   app.get("/", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["stock"],
       response: { 200: z.array(stockResponseSchema) }
@@ -66,8 +63,8 @@ export async function stockRoutes(app: FastifyTypeInstance) {
     })
   })
 
-  // 🔍 BUSCAR POR ID
   app.get("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["stock"],
       params: z.object({ id: z.string().uuid() }),
@@ -104,8 +101,8 @@ export async function stockRoutes(app: FastifyTypeInstance) {
     return stock
   })
 
-  // ➕ CRIAR
   app.post("/", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["stock"],
       body: stockBodySchema,
@@ -135,8 +132,8 @@ export async function stockRoutes(app: FastifyTypeInstance) {
     return reply.status(201).send(stock)
   })
 
-  // 🔄 UPDATE COMPLETO
   app.put("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["stock"],
       params: z.object({ id: z.string().uuid() }),
@@ -167,8 +164,8 @@ export async function stockRoutes(app: FastifyTypeInstance) {
     return { message: "Stock atualizado com sucesso" }
   })
 
-  // 🩹 UPDATE PARCIAL
   app.patch("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["stock"],
       params: z.object({ id: z.string().uuid() }),
@@ -197,8 +194,8 @@ export async function stockRoutes(app: FastifyTypeInstance) {
     return { message: "Stock atualizado parcialmente" }
   })
 
-  // ❌ DELETE
   app.delete("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["stock"],
       params: z.object({ id: z.string().uuid() }),

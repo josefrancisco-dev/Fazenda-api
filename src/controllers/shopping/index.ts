@@ -37,6 +37,7 @@ export async function shoppingRoutes(app: FastifyTypeInstance) {
 
   // GET ALL
   app.get("/", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["shopping"],
       description: "List all shopping orders",
@@ -54,6 +55,7 @@ export async function shoppingRoutes(app: FastifyTypeInstance) {
 
   // GET ONE
   app.get("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["shopping"],
       description: "Get shopping order by ID",
@@ -81,6 +83,7 @@ export async function shoppingRoutes(app: FastifyTypeInstance) {
 
   // POST - Criação da compra com itens (total calculado no backend)
   app.post("/", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["shopping"],
       description: "Create a new shopping order",
@@ -138,6 +141,7 @@ export async function shoppingRoutes(app: FastifyTypeInstance) {
 
   // PUT - Atualização completa
   app.put("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["shopping"],
       description: "Update a shopping order fully",
@@ -187,7 +191,7 @@ export async function shoppingRoutes(app: FastifyTypeInstance) {
           total,
           status,
           items: {
-            create: items  // Cria os novos itens
+            create: items 
           }
         }
       })
@@ -198,6 +202,7 @@ export async function shoppingRoutes(app: FastifyTypeInstance) {
 
   // PATCH - Atualização parcial
   app.patch("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["shopping"],
       description: "Partially update a shopping order",
@@ -259,6 +264,7 @@ export async function shoppingRoutes(app: FastifyTypeInstance) {
 
   // DELETE
   app.delete("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["shopping"],
       description: "Delete a shopping order",

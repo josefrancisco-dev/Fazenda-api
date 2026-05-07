@@ -1,122 +1,7 @@
-// import z from "zod"
-// import { FastifyTypeInstance } from "../../types"
-// import { randomUUID } from "node:crypto"
-
-// const supplierResponseSchema = z.object({
-//   id: z.string().uuid(),
-//   name: z.string(),
-//   role: z.string(),
-//   status: z.enum(["Customer", "Lead", "Active"]),
-//   // date: z.string(),
-//   company: z.string(),
-//   email: z.email(),
-//   phone: z.string(),
-//   nif : z.string(),
-//   avatar: z.string().optional(),
-// })
-
-// const supplierBodySchema = supplierResponseSchema.omit({ id: true })
-
-// type Supplier = z.infer<typeof supplierResponseSchema>
-
-// const suppliers: Supplier[] = []
-
-// export async function supplierRoutes(app: FastifyTypeInstance) {
-
-//   app.get("/", {
-//     schema: {
-//       tags: ["suppliers"],
-//       description: "List all suppliers",
-//       response: { 200: z.array(supplierResponseSchema) }
-//     }
-//   }, () => suppliers)
-
-//   app.get("/:id", {
-//     schema: {
-//       tags: ["suppliers"],
-//       description: "Get supplier by ID",
-//       params: z.object({ id: z.string().uuid() }),
-//       response: {
-//         200: supplierResponseSchema,
-//         404: z.object({ message: z.string() })
-//       }
-//     }
-//   }, async (request, reply) => {
-//     const supplier = suppliers.find(s => s.id === request.params.id)
-//     if (!supplier) return reply.status(404).send({ message: "Supplier not found" })
-//     return reply.status(200).send(supplier)
-//   })
-
-//   app.post("/", {
-//     schema: {
-//       tags: ["suppliers"],
-//       description: "Create a new supplier",
-//       body: supplierBodySchema,
-//       response: { 201: z.object({ id: z.string() }) }
-//     }
-//   }, async (request, reply) => {
-//     const newSupplier: Supplier = { id: randomUUID(), ...request.body }
-//     suppliers.push(newSupplier)
-//     return reply.status(201).send({ id: newSupplier.id })
-//   })
-
-//   app.put("/:id", {
-//     schema: {
-//       tags: ["suppliers"],
-//       description: "Update a supplier fully",
-//       params: z.object({ id: z.string().uuid() }),
-//       body: supplierBodySchema,
-//       response: {
-//         200: z.object({ message: z.string() }),
-//         404: z.object({ message: z.string() })
-//       }
-//     }
-//   }, async (request, reply) => {
-//     const index = suppliers.findIndex(s => s.id === request.params.id)
-//     if (index === -1) return reply.status(404).send({ message: "Supplier not found" })
-//     suppliers[index] = { id: request.params.id, ...request.body }
-//     return reply.status(200).send({ message: "Supplier updated successfully" })
-//   })
-
-//   app.patch("/:id", {
-//     schema: {
-//       tags: ["suppliers"],
-//       description: "Partially update a supplier",
-//       params: z.object({ id: z.string().uuid() }),
-//       body: supplierBodySchema.partial(),
-//       response: {
-//         200: z.object({ message: z.string() }),
-//         404: z.object({ message: z.string() })
-//       }
-//     }
-//   }, async (request, reply) => {
-//     const index = suppliers.findIndex(s => s.id === request.params.id)
-//     if (index === -1) return reply.status(404).send({ message: "Supplier not found" })
-//     suppliers[index] = { ...suppliers[index], ...request.body }
-//     return reply.status(200).send({ message: "Supplier patched successfully" })
-//   })
-
-//   app.delete("/:id", {
-//     schema: {
-//       tags: ["suppliers"],
-//       description: "Delete a supplier",
-//       params: z.object({ id: z.string().uuid() }),
-//       response: {
-//         200: z.object({ message: z.string() }),
-//         404: z.object({ message: z.string() })
-//       }
-//     }
-//   }, async (request, reply) => {
-//     const index = suppliers.findIndex(s => s.id === request.params.id)
-//     if (index === -1) return reply.status(404).send({ message: "Supplier not found" })
-//     suppliers.splice(index, 1)
-//     return reply.status(200).send({ message: "Supplier deleted successfully" })
-//   })
-// }
-
 import z from "zod"
 import { FastifyTypeInstance } from "../../types"
 import prisma from "../../../prisma"
+import { PersonStatus, Role } from "@prisma/client"
 
 const supplierResponseSchema = z.object({
   id:      z.string().uuid(),
@@ -137,6 +22,7 @@ export async function supplierRoutes(app: FastifyTypeInstance) {
 
  // GET ALL
   app.get("/", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["suppliers"],
       description: "List all suppliers",
@@ -150,6 +36,7 @@ export async function supplierRoutes(app: FastifyTypeInstance) {
 
   // GET ONE
   app.get("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["suppliers"],
       description: "Get supplier by ID",
@@ -171,6 +58,7 @@ export async function supplierRoutes(app: FastifyTypeInstance) {
 
   // POST
   app.post("/", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["suppliers"],
       description: "Create a new supplier",
@@ -181,7 +69,7 @@ export async function supplierRoutes(app: FastifyTypeInstance) {
       }
     }
   }, async (request, reply) => {
-    const { company, name, email, phone, role, nif, avatar, status } = request.body
+    const { company, name, email, phone, role = Role.Supplier, nif, avatar, status = PersonStatus.Active } = request.body
 
     const alreadyExists = await prisma.supplier.findFirst({ where: { email } })
     if (alreadyExists) return reply.status(400).send({ message: "Fornecedor já existe!" })
@@ -205,6 +93,7 @@ export async function supplierRoutes(app: FastifyTypeInstance) {
 
   // PUT
   app.put("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["suppliers"],
       description: "Update a supplier fully",
@@ -232,6 +121,7 @@ export async function supplierRoutes(app: FastifyTypeInstance) {
 
   // PATCH
   app.patch("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["suppliers"],
       description: "Partially update a supplier",
@@ -259,6 +149,7 @@ export async function supplierRoutes(app: FastifyTypeInstance) {
 
   // DELETE
   app.delete("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["suppliers"],
       description: "Delete a supplier",

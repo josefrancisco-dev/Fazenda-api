@@ -24,6 +24,14 @@ enum StockStatus {
   Estoque_Baixo
 }
 
+enum OrderStatus {
+  Pendente
+  Em_Andamento
+  Em_Processamento
+  Cancelado
+  Concluído
+}
+
 model Client {
   id       String       @id @default(uuid())
   name     String
