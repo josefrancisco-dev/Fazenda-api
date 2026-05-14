@@ -6,16 +6,32 @@ import { stockRoutes } from "@/controllers/stock"
 import { shoppingRoutes } from "@/controllers/shopping"
 import { productsRoutes } from "@/controllers/products"
 import { authRoutes } from "@/controllers/authenticantion"
+import { checkoutRoutes } from "@/controllers/paypemnts"
+import { stockPrintRoutes } from "@/controllers/print/estock"
+import { shoppingPrintRoutes} from "@/controllers/print/shopping"
+import { supplierPrintRoutes } from "@/controllers/print/suppliers"
+import { productsPrintRoutes } from "@/controllers/print/product"
+import { ordersPrintRoutes } from "@/controllers/print/orders"
+import { clientsPrintRoutes } from "@/controllers/print/client"
 
 export function registerRoutes(app: FastifyTypeInstance) { 
+  
   app.register(authRoutes, { prefix: '/auth' })
   app.register(clientsRoutes,   { prefix: "/clients" })
   app.register(supplierRoutes,  { prefix: "/suppliers" })
   app.register(ordersRoutes,    { prefix: "/orders" })
+  app.register(checkoutRoutes,    { prefix: "/orders" })
   app.register(stockRoutes,     { prefix: "/stock" })
   app.register(shoppingRoutes,  { prefix: "/shopping" })
   app.register(productsRoutes,  { prefix: "/products" })
-  
+
+  app.register(stockPrintRoutes, { prefix: "/stock/print" })
+  app.register(shoppingPrintRoutes,  { prefix: "/shopping/print" })
+  app.register(supplierPrintRoutes,  { prefix: "/suppliers/print" })
+  app.register(productsPrintRoutes,  { prefix: "/products/print" })
+  app.register(ordersPrintRoutes,  { prefix: "/orders/print" })
+ app.register(clientsPrintRoutes,   { prefix: "/clients/print" })
+
 // Dashboard
 // app.register(kpiRoutes,        { prefix: "/kpi" })
 // app.register(chartRoutes,      { prefix: "/chart" })

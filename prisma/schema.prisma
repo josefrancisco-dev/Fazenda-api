@@ -25,11 +25,11 @@ enum StockStatus {
 }
 
 enum OrderStatus {
-  Pendente
-  Em_Andamento
-  Em_Processamento
-  Cancelado
-  Concluído
+  PENDENTE
+  CONFIRMADO
+  EM_PROCESSAMENTO
+  ENVIADO
+  ENTREGUE
 }
 
 model Client {
@@ -119,13 +119,15 @@ model Stock {
 }
 
 model Order {
-  id       String  @id @default(uuid())
-  number   Int     @unique
-  date     String
-  total    Float
-  status   Boolean @default(false)
-  clientId String
-  client   Client  @relation(fields: [clientId], references: [id])
+  id              String  @id @default(uuid())
+  number          Int     @unique
+  date            String
+  total           Float
+  status          Boolean @default(false)
+  clientId        String
+  stripeSessionId String?
+  stripePaymentId String?
+  client          Client  @relation(fields: [clientId], references: [id])
 
   items OrderItem[]
 
