@@ -37,14 +37,26 @@ const stockBodySchema = z.object({
 
 export async function stockRoutes(app: FastifyTypeInstance) {
 
+  //get all
   app.get("/", {
     preHandler: [app.authenticate],
     schema: {
       tags: ["stock"],
+      querystring: z.object({
+        q: z.string().optional(),
+      }),
       response: { 200: z.array(stockResponseSchema) }
     }
-  }, async () => {
+  }, async (req) => {
+    const { q } = req.query
+
     return prisma.stock.findMany({
+      where: q ? {
+        OR: [
+          { product: { name:     { contains: q } } },
+          { product: { category: { contains: q } } },
+        ],
+      } : undefined,
       select: {
         id: true,
         quantity: true,

@@ -156,10 +156,21 @@ async function clientsRoutes(app2) {
     schema: {
       tags: ["clients"],
       description: "List all clients",
+      querystring: import_zod.default.object({
+        q: import_zod.default.string().optional()
+      }),
       response: { 200: import_zod.default.array(clientResponseSchema) }
     }
-  }, async () => {
+  }, async (req) => {
+    const { q } = req.query;
     return await prisma_default.client.findMany({
+      where: q ? {
+        OR: [
+          { name: { contains: q } },
+          { email: { contains: q } },
+          { company: { contains: q } }
+        ]
+      } : void 0,
       orderBy: { name: "asc" }
     });
   });
@@ -301,10 +312,23 @@ async function supplierRoutes(app2) {
     schema: {
       tags: ["suppliers"],
       description: "List all suppliers",
+      querystring: import_zod2.default.object({
+        q: import_zod2.default.string().optional()
+      }),
       response: { 200: import_zod2.default.array(supplierResponseSchema) }
     }
-  }, async () => {
+  }, async (req) => {
+    const { q } = req.query;
     return await prisma_default.supplier.findMany({
+      where: q ? {
+        OR: [
+          { name: { contains: q } },
+          { email: { contains: q } },
+          { company: { contains: q } },
+          { nif: { contains: q } },
+          { phone: { contains: q } }
+        ]
+      } : void 0,
       orderBy: { name: "asc" }
     });
   });
@@ -486,10 +510,23 @@ async function ordersRoutes(app2) {
     schema: {
       tags: ["orders"],
       description: "List all orders",
+      querystring: import_zod3.default.object({
+        q: import_zod3.default.string().optional()
+      }),
       response: { 200: import_zod3.default.array(orderResponseSchema) }
     }
-  }, async () => {
-    return prisma_default.order.findMany({ include: orderInclude });
+  }, async (req) => {
+    const { q } = req.query;
+    return prisma_default.order.findMany({
+      where: q ? {
+        OR: [
+          { client: { name: { contains: q } } },
+          { client: { company: { contains: q } } }
+        ]
+      } : void 0,
+      include: orderInclude,
+      orderBy: { number: "asc" }
+    });
   });
   app2.get("/:id", {
     preHandler: [app2.authenticate],
@@ -648,10 +685,20 @@ async function stockRoutes(app2) {
     preHandler: [app2.authenticate],
     schema: {
       tags: ["stock"],
+      querystring: import_zod4.default.object({
+        q: import_zod4.default.string().optional()
+      }),
       response: { 200: import_zod4.default.array(stockResponseSchema) }
     }
-  }, async () => {
+  }, async (req) => {
+    const { q } = req.query;
     return prisma_default.stock.findMany({
+      where: q ? {
+        OR: [
+          { product: { name: { contains: q } } },
+          { product: { category: { contains: q } } }
+        ]
+      } : void 0,
       select: {
         id: true,
         quantity: true,
@@ -836,10 +883,20 @@ async function shoppingRoutes(app2) {
     schema: {
       tags: ["shopping"],
       description: "List all shopping orders",
+      querystring: import_zod5.default.object({
+        q: import_zod5.default.string().optional()
+      }),
       response: { 200: import_zod5.default.array(shoppingResponseSchema) }
     }
-  }, async () => {
+  }, async (req) => {
+    const { q } = req.query;
     return await prisma_default.shopping.findMany({
+      where: q ? {
+        OR: [
+          { supplier: { name: { contains: q } } },
+          { supplier: { company: { contains: q } } }
+        ]
+      } : void 0,
       include: {
         supplier: true,
         items: true
@@ -1066,10 +1123,20 @@ async function productsRoutes(app2) {
     preHandler: [app2.authenticate],
     schema: {
       tags: ["products"],
+      querystring: import_zod6.default.object({
+        q: import_zod6.default.string().optional()
+      }),
       response: { 200: import_zod6.default.array(productResponseSchema) }
     }
-  }, async () => {
+  }, async (req) => {
+    const { q } = req.query;
     return await prisma_default.product.findMany({
+      where: q ? {
+        OR: [
+          { name: { contains: q } },
+          { category: { contains: q } }
+        ]
+      } : void 0,
       orderBy: { name: "asc" }
     });
   });
@@ -1121,6 +1188,10 @@ async function productsRoutes(app2) {
         if (part.fieldname === "price") price = parseFloat(value);
       }
     }
+    const alreadyExists = await prisma_default.product.findFirst({
+      where: { name }
+    });
+    if (alreadyExists) return reply.status(400).send({ message: "Produto j\xE1 existe!" });
     const product = await prisma_default.product.create({
       data: {
         name,

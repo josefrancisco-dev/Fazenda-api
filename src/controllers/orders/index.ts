@@ -66,16 +66,31 @@ const orderInclude = {
 
 export async function ordersRoutes(app: FastifyTypeInstance) {
 
+ //get all
   app.get("/", {
-    preHandler: [app.authenticate],
-    schema: {
-      tags: ["orders"],
-      description: "List all orders",
-      response: { 200: z.array(orderResponseSchema) }
-    }
-  }, async () => {
-    return prisma.order.findMany({ include: orderInclude })
+  preHandler: [app.authenticate],
+  schema: {
+    tags: ["orders"],
+    description: "List all orders",
+    querystring: z.object({
+      q: z.string().optional(),
+    }),
+    response: { 200: z.array(orderResponseSchema) }
+  }
+}, async (req) => {
+  const { q } = req.query
+
+  return prisma.order.findMany({
+    where: q ? {
+      OR: [
+        { client: { name:    { contains: q } } },
+        { client: { company: { contains: q } } },
+      ],
+    } : undefined,
+    include: orderInclude,
+    orderBy: { number: "asc" }
   })
+})
 
   app.get("/:id", {
     preHandler: [app.authenticate],

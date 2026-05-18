@@ -21,19 +21,30 @@ const clientBodySchema = clientResponseSchema.omit({ id: true, date: true })
 
 export async function clientsRoutes(app: FastifyTypeInstance) {
 
-  // GET ALL
   app.get("/", {
-    preHandler: [app.authenticate],
-    schema: {
-      tags: ["clients"],
-      description: "List all clients",
-      response: { 200: z.array(clientResponseSchema) }
-    }
-  }, async () => {
-    return await prisma.client.findMany({
-      orderBy: { name: "asc" }
-    })
+  preHandler: [app.authenticate],
+  schema: {
+    tags: ["clients"],
+    description: "List all clients",
+    querystring: z.object({
+      q: z.string().optional(),
+    }),
+    response: { 200: z.array(clientResponseSchema) }
+  }
+}, async (req) => {
+  const { q } = req.query
+
+  return await prisma.client.findMany({
+    where: q ? {
+      OR: [
+        { name:    { contains: q } },
+        { email:   { contains: q } },
+        { company: { contains: q } },
+      ],
+    } : undefined,
+    orderBy: { name: "asc" }
   })
+})
 
   // GET ONE
   app.get("/:id", {

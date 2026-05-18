@@ -26,10 +26,24 @@ export async function supplierRoutes(app: FastifyTypeInstance) {
     schema: {
       tags: ["suppliers"],
       description: "List all suppliers",
+      querystring: z.object({
+          q: z.string().optional(),
+        }),
       response: { 200: z.array(supplierResponseSchema) }
     }
-  }, async () => {
+  }, async (req) => {
+    const { q } = req.query
+
     return await prisma.supplier.findMany({
+      where: q ? {
+        OR: [
+          { name:    { contains: q } },
+          { email:   { contains: q } },
+          { company: { contains: q } },
+          {  nif: { contains: q } },
+          { phone: { contains: q } },
+        ],
+      } : undefined,
       orderBy: { name: "asc" }
     })
   })

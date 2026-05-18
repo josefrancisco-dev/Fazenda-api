@@ -36,22 +36,34 @@ const shoppingBodySchema = z.object({
 export async function shoppingRoutes(app: FastifyTypeInstance) {
 
   // GET ALL
+
   app.get("/", {
-    preHandler: [app.authenticate],
-    schema: {
-      tags: ["shopping"],
-      description: "List all shopping orders",
-      response: { 200: z.array(shoppingResponseSchema) }
-    }
-  }, async () => {
-    return await prisma.shopping.findMany({
-      include: { 
-        supplier: true,
-        items: true 
-      },
-      orderBy: { number: "desc" }
-    })
+  preHandler: [app.authenticate],
+  schema: {
+    tags: ["shopping"],
+    description: "List all shopping orders",
+    querystring: z.object({
+      q: z.string().optional(),
+    }),
+    response: { 200: z.array(shoppingResponseSchema) }
+  }
+}, async (req) => {
+  const { q } = req.query
+
+  return await prisma.shopping.findMany({
+    where: q ? {
+      OR: [
+        { supplier: { name:    { contains: q } } },
+        { supplier: { company: { contains: q } } },
+      ],
+    } : undefined,
+    include: {
+      supplier: true,
+      items: true
+    },
+    orderBy: { number: "desc" }
   })
+})
 
   // GET ONE
   app.get("/:id", {

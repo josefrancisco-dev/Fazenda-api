@@ -23,20 +23,32 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR)
 
 export async function productsRoutes(app: FastifyTypeInstance) {
 
-  await app.register(multipart)
+await app.register(multipart)
 
-  // GET ALL
-  app.get("/", {
-    preHandler: [app.authenticate],
-    schema: {
-      tags: ["products"],
-      response: { 200: z.array(productResponseSchema) }
-    }
-  }, async () => {
-    return await prisma.product.findMany({
-      orderBy: { name: "asc" }
-    })
+app.get("/", {
+  preHandler: [app.authenticate],
+  schema: {
+    tags: ["products"],
+    querystring: z.object({
+      q: z.string().optional(), 
+    }),
+    response: { 200: z.array(productResponseSchema) }
+  }
+}, async (req) => {
+  const { q } = req.query
+
+  return await prisma.product.findMany({
+    where: q
+      ? {
+          OR: [
+            { name:     { contains: q} },
+            { category: { contains: q} },
+          ],
+        }
+      : undefined,
+    orderBy: { name: "asc" }
   })
+})
 
   // GET ONE
   app.get("/:id", {
@@ -93,6 +105,12 @@ export async function productsRoutes(app: FastifyTypeInstance) {
         if (part.fieldname === "price")    price    = parseFloat(value)
       }
     }
+
+  const alreadyExists = await prisma.product.findFirst({
+    where: { name }
+  })
+  
+  if (alreadyExists) return reply.status(400).send({ message: "Produto já existe!" })
 
     // Cria o produto
     const product = await prisma.product.create({
