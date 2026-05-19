@@ -70,7 +70,6 @@ export async function clientsRoutes(app: FastifyTypeInstance) {
 
   // POST
   app.post("/", {
-    preHandler: [app.authenticate],
     schema: {
       tags: ["clients"],
       description: "Create a new client",
@@ -118,6 +117,9 @@ export async function clientsRoutes(app: FastifyTypeInstance) {
       }
     }
   }, async (request, reply) => {
+
+    console.log("Body recebido:", request.body) 
+
     const client = await prisma.client.findUnique({
       where: { id: request.params.id }
     })

@@ -193,7 +193,6 @@ async function clientsRoutes(app2) {
     return reply.status(200).send(client);
   });
   app2.post("/", {
-    preHandler: [app2.authenticate],
     schema: {
       tags: ["clients"],
       description: "Create a new client",
@@ -236,6 +235,7 @@ async function clientsRoutes(app2) {
       }
     }
   }, async (request, reply) => {
+    console.log("Body recebido:", request.body);
     const client = await prisma_default.client.findUnique({
       where: { id: request.params.id }
     });
@@ -1666,7 +1666,10 @@ var jwt_default = (0, import_fastify_plugin.default)(async (app2) => {
 
 // src/server.ts
 var app = (0, import_fastify.default)().withTypeProvider();
-app.register(import_cors.default, { origin: "*" });
+app.register(import_cors.default, {
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE"]
+});
 app.setValidatorCompiler(import_fastify_type_provider_zod.validatorCompiler);
 app.setSerializerCompiler(import_fastify_type_provider_zod.serializerCompiler);
 app.register(jwt_default);

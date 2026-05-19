@@ -10,7 +10,11 @@ import path from "node:path"
 import jwt from "./plugins/jwt";
 
 const app = fastify().withTypeProvider<ZodTypeProvider>()
-app.register(fastifyCors, {origin : "*"})
+// app.register(fastifyCors, {origin : "*"})
+app.register(fastifyCors, {
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE"]
+})
 
 app.setValidatorCompiler(validatorCompiler)
 app.setSerializerCompiler(serializerCompiler)
