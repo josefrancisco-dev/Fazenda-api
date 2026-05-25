@@ -6,7 +6,7 @@ export const categorySchema = z.object({
   id:          z.string().uuid(),
   name:        z.string(),
   description: z.string().nullable(),
-  createdAt:   z.date(),
+  // createdAt:   z.string().datetime(),
 })
 
 const categoryBodySchema = z.object({
@@ -17,66 +17,76 @@ const categoryBodySchema = z.object({
 export async function categoriesRoutes(app: FastifyTypeInstance) {
 
   // get all
-  app.get("/", {
-    preHandler: [app.authenticate],
-    schema: {
-      tags: ["categories"],
-      description: "List all categories",
-      querystring: z.object({
-        q: z.string().optional(),
-      }),
-      response: {
-        200: z.array(categorySchema)
-      }
+app.get("/", {
+  // preHandler: [app.authenticate],
+  schema: {
+    // tags: ["categories"],
+    description: "List all categories",
+    querystring: z.object({
+      q: z.string().optional(),
+    }),
+    response: {
+      200: z.array(categorySchema)
     }
-  }, async (request) => {
+  }
+}, async (request) => {
 
-    const { q } = request.query
+  const { q } = request.query
 
-    return prisma.category.findMany({
-      where: q ? {
-        name: {
-          contains: q,
-        }
-      } : undefined,
-      orderBy: {
-        name: "asc"
+  // Busca os dados do banco
+  const categories = await prisma.category.findMany({
+    where: q ? {
+      name: {
+        contains: q,
       }
-    })
+    } : undefined,
+    orderBy: {
+      name: "asc"
+    }
   })
 
-  // get by id
+  return categories.map(category => ({
+    ...category,
+    // createdAt: category.createdAt.toISOString()
+  }))
+})
+
   app.get("/:id", {
-    preHandler: [app.authenticate],
-    schema: {
-      tags: ["categories"],
-      description: "Get category by ID",
-      params: z.object({
-        id: z.string().uuid(),
-      }),
-      response: {
-        200: categorySchema,
-        404: z.object({
-          message: z.string(),
-        })
-      }
-    }
-  }, async (request, reply) => {
-
-    const category = await prisma.category.findUnique({
-      where: {
-        id: request.params.id
-      }
-    })
-
-    if (!category) {
-      return reply.status(404).send({
-        message: "Category not found"
+  preHandler: [app.authenticate],
+  schema: {
+    tags: ["categories"],
+    description: "Get category by ID",
+    params: z.object({
+      id: z.string().uuid(),
+    }),
+    response: {
+      200: categorySchema,
+      404: z.object({
+        message: z.string(),
       })
     }
+  }
+}, async (request, reply) => {
 
-    return reply.status(200).send(category)
+  const category = await prisma.category.findUnique({
+    where: {
+      id: request.params.id
+    }
   })
+
+  if (!category) {
+    return reply.status(404).send({
+      message: "Category not found"
+    })
+  }
+
+  return reply.status(200).send({
+    id: category.id,
+    name: category.name,
+    description: category.description,
+    // createdAt: category.createdAt.toISOString()  // Converte Date para string
+  })
+})
 
   // create
   app.post("/", {

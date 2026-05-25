@@ -28,7 +28,7 @@ app.register(fastifySwagger, {
       title :   "Api fazenda",
       version :  "1.0.0"
     }
-  }
+  }, 
 })
 
 app.register(fastifySwaggerUi, {
