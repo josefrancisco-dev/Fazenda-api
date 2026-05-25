@@ -6,7 +6,7 @@ import { Role } from "@prisma/client"
 const clientResponseSchema = z.object({
   id:      z.string().uuid(),
   name:    z.string(),
-  role:    z.enum(['Client', 'Supplier', 'Admin' ]),
+  role:    z.enum(['Client', 'Supplier', 'Admin' ]), 
   status:  z.enum(['Customer', 'Lead', 'Active']),
   date:    z.string(),
   company: z.string(),
