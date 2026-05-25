@@ -13,6 +13,7 @@ import { supplierPrintRoutes } from "@/controllers/print/suppliers"
 import { productsPrintRoutes } from "@/controllers/print/product"
 import { ordersPrintRoutes } from "@/controllers/print/orders"
 import { clientsPrintRoutes } from "@/controllers/print/client"
+import { categoriesRoutes } from "@/controllers/category"
 
 export function registerRoutes(app: FastifyTypeInstance) { 
   
@@ -20,6 +21,7 @@ export function registerRoutes(app: FastifyTypeInstance) {
   app.register(clientsRoutes,   { prefix: "/clients" })
   app.register(supplierRoutes,  { prefix: "/suppliers" })
   app.register(ordersRoutes,    { prefix: "/orders" })
+  app.register(categoriesRoutes, { prefix: "/categories" })
   app.register(checkoutRoutes,    { prefix: "/orders" })
   app.register(stockRoutes,     { prefix: "/stock" })
   app.register(shoppingRoutes,  { prefix: "/shopping" })

@@ -1,3 +1,152 @@
+// generator client {
+//   provider = "prisma-client-js"
+// }
+
+// datasource db {
+//   provider = "sqlite"
+// }
+
+// enum PersonStatus {
+//   Customer
+//   Lead
+//   Active
+// }
+
+// enum Role {
+//   Client
+//   Supplier
+//   Admin
+// }
+
+// enum StockStatus {
+//   Em_Estoque
+//   Estoque_Medio
+//   Estoque_Baixo
+// }
+
+// enum OrderStatus {
+//   Pendente
+//   Confirmado
+//   Em_processamento
+//   Enviado
+//   Entregue
+// }
+
+// model Client {
+//   id       String       @id @default(uuid())
+//   name     String
+//   role     Role
+//   status   PersonStatus
+//   date     String
+//   company  String
+//   email    String       @unique
+//   phone    String
+//   nif      String       @unique
+//   avatar   String?
+//   password String
+//   orders   Order[]
+
+//   @@map("clients")
+// }
+
+// model Shopping {
+//   id         String   @id @default(uuid())
+//   number     Int      @unique
+//   supplierId String
+//   supplier   Supplier @relation(fields: [supplierId], references: [id])
+//   date       String
+//   total      Float
+//   status     Boolean  @default(false)
+
+//   items ShoppingItem[]
+
+//   @@map("shoppings")
+// }
+
+// model ShoppingItem {
+//   id         String   @id @default(uuid())
+//   name       String
+//   quantity   Int
+//   price      Float
+//   shoppingId String
+//   shopping   Shopping @relation(fields: [shoppingId], references: [id])
+
+//   @@map("shoppingItem")
+// }
+
+// model Supplier {
+//   id      String       @id @default(uuid())
+//   name    String
+//   role    String
+//   status  PersonStatus
+//   date    String
+//   company String
+//   email   String       @unique
+//   phone   String
+//   nif     String       @unique
+//   avatar  String?
+
+//   shoppings Shopping[]
+
+//   @@map("suppliers")
+// }
+
+// model Product {
+//   id         String      @id @default(uuid())
+//   name       String
+//   category   String
+//   quantity   Int
+//   unit       String
+//   price      Float
+//   banner     String
+//   emoji      String
+//   image      String
+//   stocks     Stock[]
+//   orderItems OrderItem[]
+
+//   @@map("products")
+// }
+
+// model Stock {
+//   id          String      @id @default(uuid())
+//   quantity    Int
+//   value_Total Float
+//   status      StockStatus
+//   productId   String
+//   product     Product     @relation(fields: [productId], references: [id])
+
+//   @@map("stocks")
+// }
+
+// model Order {
+//   id              String      @id @default(uuid())
+//   number          Int         @unique
+//   date            String
+//   total           Float
+//   // status       Boolean @default(false)
+//   status          OrderStatus @default(Pendente)
+//   clientId        String
+//   stripeSessionId String?
+//   stripePaymentId String?
+//   client          Client      @relation(fields: [clientId], references: [id])
+
+//   items OrderItem[]
+
+//   @@map("orders")
+// }
+
+// model OrderItem {
+//   id        String  @id @default(uuid())
+//   quantity  Int
+//   price     Float
+//   productId String
+//   product   Product @relation(fields: [productId], references: [id])
+//   orderId   String
+//   order     Order   @relation(fields: [orderId], references: [id])
+
+//   @@map("orderItems")
+// }
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -25,11 +174,11 @@ enum StockStatus {
 }
 
 enum OrderStatus {
-  PENDENTE
-  CONFIRMADO
-  EM_PROCESSAMENTO
-  ENVIADO
-  ENTREGUE
+  Pendente
+  Confirmado
+  Em_processamento
+  Enviado
+  Entregue
 }
 
 model Client {
@@ -44,34 +193,10 @@ model Client {
   nif      String       @unique
   avatar   String?
   password String
-  orders   Order[]
+
+  orders Order[]
 
   @@map("clients")
-}
-
-model Shopping {
-  id         String   @id @default(uuid())
-  number     Int      @unique
-  supplierId String
-  supplier   Supplier @relation(fields: [supplierId], references: [id])
-  date       String
-  total      Float
-  status     Boolean  @default(false)
-
-  items ShoppingItem[]
-
-  @@map("shoppings")
-}
-
-model ShoppingItem {
-  id         String   @id @default(uuid())
-  name       String
-  quantity   Int
-  price      Float
-  shoppingId String
-  shopping   Shopping @relation(fields: [shoppingId], references: [id])
-
-  @@map("shoppingItem")
 }
 
 model Supplier {
@@ -91,16 +216,31 @@ model Supplier {
   @@map("suppliers")
 }
 
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  products Product[]
+
+  @@map("categories")
+}
+
 model Product {
-  id         String      @id @default(uuid())
-  name       String
-  category   String
-  quantity   Int
-  unit       String
-  price      Float
-  banner     String
-  emoji      String
-  image      String
+  id   String @id @default(uuid())
+  name String
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  quantity Int
+  unit     String
+  price    Float
+  banner   String
+  emoji    String
+  image    String
+
   stocks     Stock[]
   orderItems OrderItem[]
 
@@ -112,22 +252,53 @@ model Stock {
   quantity    Int
   value_Total Float
   status      StockStatus
-  productId   String
-  product     Product     @relation(fields: [productId], references: [id])
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
 
   @@map("stocks")
 }
 
+model Shopping {
+  id     String @id @default(uuid())
+  number Int    @unique
+
+  supplierId String
+  supplier   Supplier @relation(fields: [supplierId], references: [id])
+
+  date   String
+  total  Float
+  status Boolean @default(false)
+
+  items ShoppingItem[]
+
+  @@map("shoppings")
+}
+
+model ShoppingItem {
+  id       String @id @default(uuid())
+  name     String
+  quantity Int
+  price    Float
+
+  shoppingId String
+  shopping   Shopping @relation(fields: [shoppingId], references: [id])
+
+  @@map("shoppingItem")
+}
+
 model Order {
-  id              String  @id @default(uuid())
-  number          Int     @unique
-  date            String
-  total           Float
-  status          Boolean @default(false)
-  clientId        String
+  id     String      @id @default(uuid())
+  number Int         @unique
+  date   String
+  total  Float
+  status OrderStatus @default(Pendente)
+
   stripeSessionId String?
   stripePaymentId String?
-  client          Client  @relation(fields: [clientId], references: [id])
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id])
 
   items OrderItem[]
 
@@ -135,13 +306,15 @@ model Order {
 }
 
 model OrderItem {
-  id        String  @id @default(uuid())
-  quantity  Int
-  price     Float
+  id       String @id @default(uuid())
+  quantity Int
+  price    Float
+
   productId String
   product   Product @relation(fields: [productId], references: [id])
-  orderId   String
-  order     Order   @relation(fields: [orderId], references: [id])
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id])
 
   @@map("orderItems")
 }

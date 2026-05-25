@@ -43,7 +43,13 @@ export const orderResponseSchema = z.object({
   number:   z.number(),
   date:     z.string(),
   total:    z.number().min(0),
-  status:   z.boolean(),
+  status:  z.enum([
+  'Pendente',
+  'Confirmado',
+  'Em_processamento',
+  'Enviado',
+  'Entregue',
+]),
   clientId: z.string().uuid(),
   client:   clientSchema,          
   items:    z.array(orderItemFullSchema).min(1),
@@ -132,7 +138,7 @@ export async function ordersRoutes(app: FastifyTypeInstance) {
         number,
         date,
         total,
-        status: false,
+        status: "Pendente",
         clientId,
         items: { create: items },
       }
