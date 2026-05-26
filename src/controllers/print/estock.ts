@@ -15,7 +15,11 @@ const stockPrintSchema = z.object({
   status: stockStatusEnum,
   product: z.object({
     name: z.string(),
-    category: z.string(),
+    category: z.object({
+      id:          z.string().uuid(),
+      name:        z.string(),
+      description: z.string().nullable(),
+    }) ,
     unit: z.string(),
     price: z.number(),
   }).optional()

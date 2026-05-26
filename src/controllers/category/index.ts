@@ -15,9 +15,7 @@ const categoryBodySchema = z.object({
 
 export async function categoriesRoutes(app: FastifyTypeInstance) {
 
-  // GET ALL - SEM QUERYSTRING
   app.get("/", {
-    // preHandler: [app.authenticate],
     schema: {
       tags: ["categories"],
       description: "List all categories",
@@ -26,7 +24,6 @@ export async function categoriesRoutes(app: FastifyTypeInstance) {
       }
     }
   }, async () => {
-    // Busca todos os dados do banco
     const categories = await prisma.category.findMany({
       orderBy: {
         name: "asc"
@@ -40,7 +37,6 @@ export async function categoriesRoutes(app: FastifyTypeInstance) {
     }))
   })
 
-  // GET BY ID
   app.get("/:id", {
     preHandler: [app.authenticate],
     schema: {
@@ -76,7 +72,6 @@ export async function categoriesRoutes(app: FastifyTypeInstance) {
     })
   })
 
-  // CREATE
   app.post("/", {
     preHandler: [app.authenticate],
     schema: {
@@ -114,7 +109,6 @@ export async function categoriesRoutes(app: FastifyTypeInstance) {
     })
   })
 
-  // UPDATE
   app.put("/:id", {
     preHandler: [app.authenticate],
     schema: {
@@ -157,7 +151,6 @@ export async function categoriesRoutes(app: FastifyTypeInstance) {
     })
   })
 
-  // PATCH
   app.patch("/:id", {
     preHandler: [app.authenticate],
     schema: {
@@ -199,7 +192,6 @@ export async function categoriesRoutes(app: FastifyTypeInstance) {
     })
   })
 
-  // DELETE
   app.delete("/:id", {
     preHandler: [app.authenticate],
     schema: {

@@ -8,6 +8,12 @@ const stockStatusEnum = z.enum([
   "Estoque_Baixo"
 ])
 
+const categorySchema = z.object({
+  id:          z.string().uuid(),
+  name:        z.string(),
+  description: z.string().nullable(),
+})
+
 function getStockStatus(quantity: number) {
   if (quantity <= 5) return "Estoque_Baixo"
   if (quantity <= 20) return "Estoque_Medio"
@@ -22,7 +28,7 @@ const stockResponseSchema = z.object({
   productId: z.string().uuid(),
   product: z.object({     
     name: z.string(),
-    category: z.string(),
+    category: categorySchema,
     unit: z.string(),
     price : z.number(),
   }).optional()
@@ -54,7 +60,7 @@ export async function stockRoutes(app: FastifyTypeInstance) {
       where: q ? {
         OR: [
           { product: { name:     { contains: q } } },
-          { product: { category: { contains: q } } },
+          { product: { category:  {name :  { contains: q }}}},
         ],
       } : undefined,
       select: {

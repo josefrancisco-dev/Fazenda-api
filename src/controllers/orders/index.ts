@@ -2,10 +2,15 @@ import z from "zod"
 import { FastifyTypeInstance } from "../../types"
 import prisma from "../../../prisma"
 
+
 const productSchema = z.object({
   id:       z.string().uuid(),
   name:     z.string(),
-  category: z.string(),
+  category: z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  }),
+  categoryId :  z.string(),
   quantity: z.number(),
   unit:     z.string(),
   price:    z.number(),
@@ -44,12 +49,12 @@ export const orderResponseSchema = z.object({
   date:     z.string(),
   total:    z.number().min(0),
   status:  z.enum([
-  'Pendente',
-  'Confirmado',
-  'Em_processamento',
-  'Enviado',
-  'Entregue',
-]),
+  "Pendente",
+  "Confirmado",
+  "Em_processamento",
+  "Enviado",
+  "Entregue"
+  ]),
   clientId: z.string().uuid(),
   client:   clientSchema,          
   items:    z.array(orderItemFullSchema).min(1),
@@ -62,9 +67,13 @@ const orderBodySchema = z.object({
 })
 
 const orderInclude = {
-  items: {
+ items: {
     include: {
-      product: true
+      product: {
+        include: {
+          category: true 
+        }
+      }
     }
   },
   client: true

@@ -6,7 +6,12 @@ import prisma from "../../../prisma"
 const productResponseSchema = z.object({
   id:       z.string().uuid(),
   name:     z.string().min(1),
-  category: z.string().min(1),
+  categoryId: z.string().uuid(),
+  category: z.object({
+    id :   z.string(),
+    name :  z.string(),
+    description : z.string().nullable(),
+  }),
   unit:     z.string(),
   price:    z.number().positive(),
   quantity: z.number().int(),
@@ -16,9 +21,8 @@ const productResponseSchema = z.object({
 })
 
 export async function productsPrintRoutes(app: FastifyTypeInstance) {
-
   await app.register(multipart)
-
+  
   app.get("/", {
     preHandler: [app.authenticate],
     schema: {
@@ -27,6 +31,9 @@ export async function productsPrintRoutes(app: FastifyTypeInstance) {
     }
   }, async () => {
     return await prisma.product.findMany({
+      include: {
+        category: true,
+      },
       orderBy: { name: "asc" }
     })
   })
