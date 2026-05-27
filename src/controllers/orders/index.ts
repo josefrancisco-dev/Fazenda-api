@@ -66,6 +66,10 @@ const orderBodySchema = z.object({
   items:  z.array(orderItemSchema).min(1, 'Adicione pelo menos um item'),
 })
 
+const orderUpdateSchema = z.object({
+  status: orderResponseSchema.shape.status
+})
+
 const orderInclude = {
  items: {
     include: {
@@ -160,33 +164,45 @@ export async function ordersRoutes(app: FastifyTypeInstance) {
     preHandler: [app.authenticate],
     schema: {
       tags: ["orders"],
-      description: "Update an order fully",
-      params: z.object({ id: z.string().uuid() }),
-      body: orderBodySchema,
+      description: "Update order status",
+      params: z.object({
+        id: z.string().uuid()
+      }),
+      body: orderUpdateSchema,
       response: {
-        200: z.object({ message: z.string() }),
-        404: z.object({ message: z.string() })
+        200: z.object({
+          message: z.string()
+        }),
+        404: z.object({
+          message: z.string()
+        })
       }
     }
   }, async (request, reply) => {
+
     const { id } = request.params
-    const { number, date, items } = request.body
-    const clientId = request.user.sub
+    const { status } = request.body
 
-    const exists = await prisma.order.findUnique({ where: { id } })
-    if (!exists) return reply.status(404).send({ message: "Order not found" })
+    const exists = await prisma.order.findUnique({
+      where: { id }
+    })
 
-    const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+    if (!exists) {
+      return reply.status(404).send({
+        message: "Order not found"
+      })
+    }
 
     await prisma.order.update({
       where: { id },
       data: {
-        number, date, total, clientId,
-        items: { deleteMany: {}, create: items }
+        status
       }
     })
 
-    return reply.status(200).send({ message: "Order updated successfully" })
+    return reply.status(200).send({
+      message: "Order status updated successfully"
+    })
   })
 
   app.patch("/:id", {

@@ -452,7 +452,11 @@ var import_zod3 = __toESM(require("zod"));
 var productSchema = import_zod3.default.object({
   id: import_zod3.default.string().uuid(),
   name: import_zod3.default.string(),
-  category: import_zod3.default.string(),
+  category: import_zod3.default.object({
+    id: import_zod3.default.string().uuid(),
+    name: import_zod3.default.string()
+  }),
+  categoryId: import_zod3.default.string(),
   quantity: import_zod3.default.number(),
   unit: import_zod3.default.string(),
   price: import_zod3.default.number(),
@@ -486,7 +490,13 @@ var orderResponseSchema = import_zod3.default.object({
   number: import_zod3.default.number(),
   date: import_zod3.default.string(),
   total: import_zod3.default.number().min(0),
-  status: import_zod3.default.boolean(),
+  status: import_zod3.default.enum([
+    "Pendente",
+    "Confirmado",
+    "Em_processamento",
+    "Enviado",
+    "Entregue"
+  ]),
   clientId: import_zod3.default.string().uuid(),
   client: clientSchema,
   items: import_zod3.default.array(orderItemFullSchema).min(1)
@@ -496,10 +506,17 @@ var orderBodySchema = import_zod3.default.object({
   date: import_zod3.default.string(),
   items: import_zod3.default.array(orderItemSchema).min(1, "Adicione pelo menos um item")
 });
+var orderUpdateSchema = import_zod3.default.object({
+  status: orderResponseSchema.shape.status
+});
 var orderInclude = {
   items: {
     include: {
-      product: true
+      product: {
+        include: {
+          category: true
+        }
+      }
     }
   },
   client: true
@@ -564,7 +581,7 @@ async function ordersRoutes(app2) {
         number,
         date,
         total,
-        status: false,
+        status: "Pendente",
         clientId,
         items: { create: items }
       }
@@ -575,32 +592,40 @@ async function ordersRoutes(app2) {
     preHandler: [app2.authenticate],
     schema: {
       tags: ["orders"],
-      description: "Update an order fully",
-      params: import_zod3.default.object({ id: import_zod3.default.string().uuid() }),
-      body: orderBodySchema,
+      description: "Update order status",
+      params: import_zod3.default.object({
+        id: import_zod3.default.string().uuid()
+      }),
+      body: orderUpdateSchema,
       response: {
-        200: import_zod3.default.object({ message: import_zod3.default.string() }),
-        404: import_zod3.default.object({ message: import_zod3.default.string() })
+        200: import_zod3.default.object({
+          message: import_zod3.default.string()
+        }),
+        404: import_zod3.default.object({
+          message: import_zod3.default.string()
+        })
       }
     }
   }, async (request, reply) => {
     const { id } = request.params;
-    const { number, date, items } = request.body;
-    const clientId = request.user.sub;
-    const exists = await prisma_default.order.findUnique({ where: { id } });
-    if (!exists) return reply.status(404).send({ message: "Order not found" });
-    const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const { status } = request.body;
+    const exists = await prisma_default.order.findUnique({
+      where: { id }
+    });
+    if (!exists) {
+      return reply.status(404).send({
+        message: "Order not found"
+      });
+    }
     await prisma_default.order.update({
       where: { id },
       data: {
-        number,
-        date,
-        total,
-        clientId,
-        items: { deleteMany: {}, create: items }
+        status
       }
     });
-    return reply.status(200).send({ message: "Order updated successfully" });
+    return reply.status(200).send({
+      message: "Order status updated successfully"
+    });
   });
   app2.patch("/:id", {
     preHandler: [app2.authenticate],
@@ -657,6 +682,11 @@ var stockStatusEnum = import_zod4.default.enum([
   "Estoque_Medio",
   "Estoque_Baixo"
 ]);
+var categorySchema = import_zod4.default.object({
+  id: import_zod4.default.string().uuid(),
+  name: import_zod4.default.string(),
+  description: import_zod4.default.string().nullable()
+});
 function getStockStatus(quantity) {
   if (quantity <= 5) return "Estoque_Baixo";
   if (quantity <= 20) return "Estoque_Medio";
@@ -670,7 +700,7 @@ var stockResponseSchema = import_zod4.default.object({
   productId: import_zod4.default.string().uuid(),
   product: import_zod4.default.object({
     name: import_zod4.default.string(),
-    category: import_zod4.default.string(),
+    category: categorySchema,
     unit: import_zod4.default.string(),
     price: import_zod4.default.number()
   }).optional()
@@ -696,7 +726,7 @@ async function stockRoutes(app2) {
       where: q ? {
         OR: [
           { product: { name: { contains: q } } },
-          { product: { category: { contains: q } } }
+          { product: { category: { name: { contains: q } } } }
         ]
       } : void 0,
       select: {
@@ -1100,14 +1130,19 @@ async function shoppingRoutes(app2) {
 
 // src/controllers/products/index.ts
 var import_zod6 = __toESM(require("zod"));
-var import_node_crypto = require("crypto");
 var import_multipart = __toESM(require("@fastify/multipart"));
-var import_node_path = __toESM(require("path"));
 var import_node_fs = __toESM(require("fs"));
+var import_node_path = __toESM(require("path"));
+var import_node_crypto = require("crypto");
+var categorySchema2 = import_zod6.default.object({
+  id: import_zod6.default.string().uuid(),
+  name: import_zod6.default.string()
+});
 var productResponseSchema = import_zod6.default.object({
   id: import_zod6.default.string().uuid(),
   name: import_zod6.default.string().min(1),
-  category: import_zod6.default.string().min(1),
+  categoryId: import_zod6.default.string().uuid(),
+  category: categorySchema2,
   unit: import_zod6.default.string(),
   price: import_zod6.default.number().positive(),
   quantity: import_zod6.default.number().int(),
@@ -1116,45 +1151,76 @@ var productResponseSchema = import_zod6.default.object({
   image: import_zod6.default.string()
 });
 var UPLOAD_DIR = import_node_path.default.resolve("uploads");
-if (!import_node_fs.default.existsSync(UPLOAD_DIR)) import_node_fs.default.mkdirSync(UPLOAD_DIR);
+if (!import_node_fs.default.existsSync(UPLOAD_DIR)) {
+  import_node_fs.default.mkdirSync(UPLOAD_DIR);
+}
 async function productsRoutes(app2) {
   await app2.register(import_multipart.default);
   app2.get("/", {
-    preHandler: [app2.authenticate],
     schema: {
       tags: ["products"],
       querystring: import_zod6.default.object({
         q: import_zod6.default.string().optional()
       }),
-      response: { 200: import_zod6.default.array(productResponseSchema) }
+      response: {
+        200: import_zod6.default.array(productResponseSchema)
+      }
     }
   }, async (req) => {
     const { q } = req.query;
     return await prisma_default.product.findMany({
       where: q ? {
         OR: [
-          { name: { contains: q } },
-          { category: { contains: q } }
+          {
+            name: {
+              contains: q
+            }
+          },
+          {
+            category: {
+              name: {
+                contains: q
+              }
+            }
+          }
         ]
       } : void 0,
-      orderBy: { name: "asc" }
+      include: {
+        category: true
+      },
+      orderBy: {
+        name: "asc"
+      }
     });
   });
   app2.get("/:id", {
     preHandler: [app2.authenticate],
     schema: {
       tags: ["products"],
-      params: import_zod6.default.object({ id: import_zod6.default.string().uuid() }),
+      params: import_zod6.default.object({
+        id: import_zod6.default.string().uuid()
+      }),
       response: {
         200: productResponseSchema,
-        404: import_zod6.default.object({ message: import_zod6.default.string() })
+        404: import_zod6.default.object({
+          message: import_zod6.default.string()
+        })
       }
     }
   }, async (request, reply) => {
     const product = await prisma_default.product.findUnique({
-      where: { id: request.params.id }
+      where: {
+        id: request.params.id
+      },
+      include: {
+        category: true
+      }
     });
-    if (!product) return reply.status(404).send({ message: "Product not found" });
+    if (!product) {
+      return reply.status(404).send({
+        message: "Product not found"
+      });
+    }
     return reply.status(200).send(product);
   });
   app2.post("/", {
@@ -1163,39 +1229,78 @@ async function productsRoutes(app2) {
       tags: ["products"],
       description: "Create a new product (multipart/form-data)",
       response: {
-        201: import_zod6.default.object({ id: import_zod6.default.string() }),
-        400: import_zod6.default.object({ message: import_zod6.default.string() })
+        201: import_zod6.default.object({
+          id: import_zod6.default.string()
+        }),
+        400: import_zod6.default.object({
+          message: import_zod6.default.string()
+        })
       }
     }
   }, async (request, reply) => {
     const parts = request.parts();
-    let name = "", category = "", unit = "", banner = "", emoji = "";
+    let name = "";
+    let categoryId = "";
+    let unit = "";
+    let banner = "";
+    let emoji = "";
     let price = 0;
     let imagePath = "";
     for await (const part of parts) {
       if (part.type === "file") {
         const filename = `${(0, import_node_crypto.randomUUID)()}${import_node_path.default.extname(part.filename)}`;
         const filepath = import_node_path.default.join(UPLOAD_DIR, filename);
-        await import_node_fs.default.promises.writeFile(filepath, await part.toBuffer());
+        await import_node_fs.default.promises.writeFile(
+          filepath,
+          await part.toBuffer()
+        );
         imagePath = `/uploads/${filename}`;
       } else {
         const value = part.value;
-        if (part.fieldname === "name") name = value;
-        if (part.fieldname === "category") category = value;
-        if (part.fieldname === "unit") unit = value;
-        if (part.fieldname === "banner") banner = value;
-        if (part.fieldname === "emoji") emoji = value;
-        if (part.fieldname === "price") price = parseFloat(value);
+        if (part.fieldname === "name") {
+          name = value;
+        }
+        if (part.fieldname === "categoryId") {
+          categoryId = value;
+        }
+        if (part.fieldname === "unit") {
+          unit = value;
+        }
+        if (part.fieldname === "banner") {
+          banner = value;
+        }
+        if (part.fieldname === "emoji") {
+          emoji = value;
+        }
+        if (part.fieldname === "price") {
+          price = parseFloat(value);
+        }
       }
     }
     const alreadyExists = await prisma_default.product.findFirst({
-      where: { name }
+      where: {
+        name
+      }
     });
-    if (alreadyExists) return reply.status(400).send({ message: "Produto j\xE1 existe!" });
+    if (alreadyExists) {
+      return reply.status(400).send({
+        message: "Produto j\xE1 existe!"
+      });
+    }
+    const categoryExists = await prisma_default.category.findUnique({
+      where: {
+        id: categoryId
+      }
+    });
+    if (!categoryExists) {
+      return reply.status(400).send({
+        message: "Categoria n\xE3o encontrada!"
+      });
+    }
     const product = await prisma_default.product.create({
       data: {
         name,
-        category,
+        categoryId,
         unit,
         price,
         banner,
@@ -1204,70 +1309,135 @@ async function productsRoutes(app2) {
         image: imagePath || ""
       }
     });
-    return reply.status(201).send({ id: product.id });
+    return reply.status(201).send({
+      id: product.id
+    });
   });
   app2.put("/:id", {
     preHandler: [app2.authenticate],
     schema: {
       tags: ["products"],
       description: "Update a product (multipart/form-data)",
-      params: import_zod6.default.object({ id: import_zod6.default.string().uuid() }),
+      params: import_zod6.default.object({
+        id: import_zod6.default.string().uuid()
+      }),
       response: {
-        200: import_zod6.default.object({ message: import_zod6.default.string() }),
-        404: import_zod6.default.object({ message: import_zod6.default.string() })
+        200: import_zod6.default.object({
+          message: import_zod6.default.string()
+        }),
+        400: import_zod6.default.object({
+          // ← adicionar
+          message: import_zod6.default.string()
+        }),
+        404: import_zod6.default.object({
+          message: import_zod6.default.string()
+        })
       }
     }
   }, async (request, reply) => {
     const product = await prisma_default.product.findUnique({
-      where: { id: request.params.id }
+      where: {
+        id: request.params.id
+      }
     });
-    if (!product) return reply.status(404).send({ message: "Product not found" });
+    if (!product) {
+      return reply.status(404).send({
+        message: "Product not found"
+      });
+    }
     const parts = request.parts();
     const updated = {};
     for await (const part of parts) {
       if (part.type === "file") {
         const filename = `${(0, import_node_crypto.randomUUID)()}${import_node_path.default.extname(part.filename)}`;
         const filepath = import_node_path.default.join(UPLOAD_DIR, filename);
-        await import_node_fs.default.promises.writeFile(filepath, await part.toBuffer());
+        await import_node_fs.default.promises.writeFile(
+          filepath,
+          await part.toBuffer()
+        );
         updated.image = `/uploads/${filename}`;
       } else {
         const value = part.value;
-        if (part.fieldname === "name") updated.name = value;
-        if (part.fieldname === "category") updated.category = value;
-        if (part.fieldname === "unit") updated.unit = value;
-        if (part.fieldname === "banner") updated.banner = value;
-        if (part.fieldname === "emoji") updated.emoji = value;
-        if (part.fieldname === "price") updated.price = parseFloat(value);
+        if (part.fieldname === "name") {
+          updated.name = value;
+        }
+        if (part.fieldname === "categoryId") {
+          const categoryExists = await prisma_default.category.findUnique({
+            where: {
+              id: value
+            }
+          });
+          if (!categoryExists) {
+            return reply.status(400).send({
+              message: "Categoria inv\xE1lida!"
+            });
+          }
+          updated.categoryId = value;
+        }
+        if (part.fieldname === "unit") {
+          updated.unit = value;
+        }
+        if (part.fieldname === "banner") {
+          updated.banner = value;
+        }
+        if (part.fieldname === "emoji") {
+          updated.emoji = value;
+        }
+        if (part.fieldname === "price") {
+          updated.price = parseFloat(value);
+        }
       }
     }
     await prisma_default.product.update({
-      where: { id: request.params.id },
+      where: {
+        id: request.params.id
+      },
       data: updated
     });
-    return reply.status(200).send({ message: "Product updated successfully" });
+    return reply.status(200).send({
+      message: "Product updated successfully"
+    });
   });
   app2.delete("/:id", {
     preHandler: [app2.authenticate],
     schema: {
       tags: ["products"],
-      params: import_zod6.default.object({ id: import_zod6.default.string().uuid() }),
+      params: import_zod6.default.object({
+        id: import_zod6.default.string().uuid()
+      }),
       response: {
-        200: import_zod6.default.object({ message: import_zod6.default.string() }),
-        404: import_zod6.default.object({ message: import_zod6.default.string() })
+        200: import_zod6.default.object({
+          message: import_zod6.default.string()
+        }),
+        404: import_zod6.default.object({
+          message: import_zod6.default.string()
+        })
       }
     }
   }, async (request, reply) => {
     const product = await prisma_default.product.findUnique({
-      where: { id: request.params.id }
+      where: {
+        id: request.params.id
+      }
     });
-    if (!product) return reply.status(404).send({ message: "Product not found" });
+    if (!product) {
+      return reply.status(404).send({
+        message: "Product not found"
+      });
+    }
     await prisma_default.stock.deleteMany({
-      where: { productId: request.params.id }
+      where: {
+        productId: request.params.id
+      }
     });
     await prisma_default.product.delete({
-      where: { id: request.params.id }
+      where: {
+        id: request.params.id
+      }
     });
-    return reply.status(200).send({ message: "Product deleted successfully" });
+    return reply.status(200).send({
+      message: "Product deleted successfully"
+    });
   });
 }
 
@@ -1399,7 +1569,11 @@ var stockPrintSchema = import_zod8.default.object({
   status: stockStatusEnum2,
   product: import_zod8.default.object({
     name: import_zod8.default.string(),
-    category: import_zod8.default.string(),
+    category: import_zod8.default.object({
+      id: import_zod8.default.string().uuid(),
+      name: import_zod8.default.string(),
+      description: import_zod8.default.string().nullable()
+    }),
     unit: import_zod8.default.string(),
     price: import_zod8.default.number()
   }).optional()
@@ -1508,7 +1682,12 @@ var import_multipart2 = __toESM(require("@fastify/multipart"));
 var productResponseSchema2 = import_zod11.default.object({
   id: import_zod11.default.string().uuid(),
   name: import_zod11.default.string().min(1),
-  category: import_zod11.default.string().min(1),
+  categoryId: import_zod11.default.string().uuid(),
+  category: import_zod11.default.object({
+    id: import_zod11.default.string(),
+    name: import_zod11.default.string(),
+    description: import_zod11.default.string().nullable()
+  }),
   unit: import_zod11.default.string(),
   price: import_zod11.default.number().positive(),
   quantity: import_zod11.default.number().int(),
@@ -1526,6 +1705,9 @@ async function productsPrintRoutes(app2) {
     }
   }, async () => {
     return await prisma_default.product.findMany({
+      include: {
+        category: true
+      },
       orderBy: { name: "asc" }
     });
   });
@@ -1536,7 +1718,11 @@ var import_zod12 = __toESM(require("zod"));
 var productSchema2 = import_zod12.default.object({
   id: import_zod12.default.string().uuid(),
   name: import_zod12.default.string(),
-  category: import_zod12.default.string(),
+  category: import_zod12.default.object({
+    id: import_zod12.default.string().uuid(),
+    name: import_zod12.default.string()
+  }),
+  categoryId: import_zod12.default.string(),
   quantity: import_zod12.default.number(),
   unit: import_zod12.default.string(),
   price: import_zod12.default.number(),
@@ -1570,7 +1756,13 @@ var orderResponseSchema2 = import_zod12.default.object({
   number: import_zod12.default.number(),
   date: import_zod12.default.string(),
   total: import_zod12.default.number().min(0),
-  status: import_zod12.default.boolean(),
+  status: import_zod12.default.enum([
+    "Pendente",
+    "Confirmado",
+    "Em_processamento",
+    "Enviado",
+    "Entregue"
+  ]),
   clientId: import_zod12.default.string().uuid(),
   client: clientSchema2,
   items: import_zod12.default.array(orderItemFullSchema2).min(1)
@@ -1578,7 +1770,11 @@ var orderResponseSchema2 = import_zod12.default.object({
 var orderInclude2 = {
   items: {
     include: {
-      product: true
+      product: {
+        include: {
+          category: true
+        }
+      }
     }
   },
   client: true
@@ -1626,12 +1822,227 @@ async function clientsPrintRoutes(app2) {
   });
 }
 
+// src/controllers/category/index.ts
+var import_zod14 = __toESM(require("zod"));
+var categorySchema3 = import_zod14.default.object({
+  id: import_zod14.default.string().uuid(),
+  name: import_zod14.default.string(),
+  description: import_zod14.default.string().nullable()
+});
+var categoryBodySchema = import_zod14.default.object({
+  name: import_zod14.default.string().min(2),
+  description: import_zod14.default.string().optional()
+});
+async function categoriesRoutes(app2) {
+  app2.get("/", {
+    schema: {
+      tags: ["categories"],
+      description: "List all categories",
+      response: {
+        200: import_zod14.default.array(categorySchema3)
+      }
+    }
+  }, async () => {
+    const categories = await prisma_default.category.findMany({
+      orderBy: {
+        name: "asc"
+      }
+    });
+    return categories.map((category) => ({
+      id: category.id,
+      name: category.name,
+      description: category.description
+    }));
+  });
+  app2.get("/:id", {
+    preHandler: [app2.authenticate],
+    schema: {
+      tags: ["categories"],
+      description: "Get category by ID",
+      params: import_zod14.default.object({
+        id: import_zod14.default.string().uuid()
+      }),
+      response: {
+        200: categorySchema3,
+        404: import_zod14.default.object({
+          message: import_zod14.default.string()
+        })
+      }
+    }
+  }, async (request, reply) => {
+    const category = await prisma_default.category.findUnique({
+      where: {
+        id: request.params.id
+      }
+    });
+    if (!category) {
+      return reply.status(404).send({
+        message: "Category not found"
+      });
+    }
+    return reply.status(200).send({
+      id: category.id,
+      name: category.name,
+      description: category.description
+    });
+  });
+  app2.post("/", {
+    preHandler: [app2.authenticate],
+    schema: {
+      tags: ["categories"],
+      description: "Create category",
+      body: categoryBodySchema,
+      response: {
+        201: import_zod14.default.object({
+          id: import_zod14.default.string().uuid()
+        }),
+        400: import_zod14.default.object({
+          message: import_zod14.default.string()
+        })
+      }
+    }
+  }, async (request, reply) => {
+    const { name, description } = request.body;
+    const categoryAlreadyExists = await prisma_default.category.findUnique({
+      where: { name }
+    });
+    if (categoryAlreadyExists) {
+      return reply.status(400).send({
+        message: "Category already exists"
+      });
+    }
+    const category = await prisma_default.category.create({
+      data: { name, description }
+    });
+    return reply.status(201).send({
+      id: category.id
+    });
+  });
+  app2.put("/:id", {
+    preHandler: [app2.authenticate],
+    schema: {
+      tags: ["categories"],
+      description: "Update category",
+      params: import_zod14.default.object({
+        id: import_zod14.default.string().uuid()
+      }),
+      body: categoryBodySchema,
+      response: {
+        200: import_zod14.default.object({
+          message: import_zod14.default.string()
+        }),
+        404: import_zod14.default.object({
+          message: import_zod14.default.string()
+        })
+      }
+    }
+  }, async (request, reply) => {
+    const { id } = request.params;
+    const { name, description } = request.body;
+    const categoryExists = await prisma_default.category.findUnique({
+      where: { id }
+    });
+    if (!categoryExists) {
+      return reply.status(404).send({
+        message: "Category not found"
+      });
+    }
+    await prisma_default.category.update({
+      where: { id },
+      data: { name, description }
+    });
+    return reply.status(200).send({
+      message: "Category updated successfully"
+    });
+  });
+  app2.patch("/:id", {
+    preHandler: [app2.authenticate],
+    schema: {
+      tags: ["categories"],
+      description: "Patch category",
+      params: import_zod14.default.object({
+        id: import_zod14.default.string().uuid()
+      }),
+      body: categoryBodySchema.partial(),
+      response: {
+        200: import_zod14.default.object({
+          message: import_zod14.default.string()
+        }),
+        404: import_zod14.default.object({
+          message: import_zod14.default.string()
+        })
+      }
+    }
+  }, async (request, reply) => {
+    const { id } = request.params;
+    const categoryExists = await prisma_default.category.findUnique({
+      where: { id }
+    });
+    if (!categoryExists) {
+      return reply.status(404).send({
+        message: "Category not found"
+      });
+    }
+    await prisma_default.category.update({
+      where: { id },
+      data: request.body
+    });
+    return reply.status(200).send({
+      message: "Category patched successfully"
+    });
+  });
+  app2.delete("/:id", {
+    preHandler: [app2.authenticate],
+    schema: {
+      tags: ["categories"],
+      description: "Delete category",
+      params: import_zod14.default.object({
+        id: import_zod14.default.string().uuid()
+      }),
+      response: {
+        200: import_zod14.default.object({
+          message: import_zod14.default.string()
+        }),
+        404: import_zod14.default.object({
+          message: import_zod14.default.string()
+        }),
+        400: import_zod14.default.object({
+          message: import_zod14.default.string()
+        })
+      }
+    }
+  }, async (request, reply) => {
+    const { id } = request.params;
+    const categoryExists = await prisma_default.category.findUnique({
+      where: { id },
+      include: { products: true }
+    });
+    if (!categoryExists) {
+      return reply.status(404).send({
+        message: "Category not found"
+      });
+    }
+    if (categoryExists.products.length > 0) {
+      return reply.status(400).send({
+        message: "Category has related products"
+      });
+    }
+    await prisma_default.category.delete({
+      where: { id }
+    });
+    return reply.status(200).send({
+      message: "Category deleted successfully"
+    });
+  });
+}
+
 // src/routes/routes.ts
 function registerRoutes(app2) {
   app2.register(authRoutes, { prefix: "/auth" });
   app2.register(clientsRoutes, { prefix: "/clients" });
   app2.register(supplierRoutes, { prefix: "/suppliers" });
   app2.register(ordersRoutes, { prefix: "/orders" });
+  app2.register(categoriesRoutes, { prefix: "/categories" });
   app2.register(checkoutRoutes, { prefix: "/orders" });
   app2.register(stockRoutes, { prefix: "/stock" });
   app2.register(shoppingRoutes, { prefix: "/shopping" });
