@@ -41,7 +41,11 @@ export async function authRoutes(app: FastifyTypeInstance) {
       id : true,
       name: true,
       email: true,
-      role: true
+      role: true, 
+      phone:   true,  
+      company: true,   
+      nif:     true, 
+      avatar:  true,
       }
 
     })

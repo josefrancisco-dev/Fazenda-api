@@ -14,6 +14,7 @@ import { productsPrintRoutes } from "@/controllers/print/product"
 import { ordersPrintRoutes } from "@/controllers/print/orders"
 import { clientsPrintRoutes } from "@/controllers/print/client"
 import { categoriesRoutes } from "@/controllers/category"
+import { dashboardRoutes } from "@/controllers/dashboard"
 
 export function registerRoutes(app: FastifyTypeInstance) { 
   
@@ -34,10 +35,5 @@ export function registerRoutes(app: FastifyTypeInstance) {
   app.register(ordersPrintRoutes,  { prefix: "/orders/print" })
  app.register(clientsPrintRoutes,   { prefix: "/clients/print" })
 
-// Dashboard
-// app.register(kpiRoutes,        { prefix: "/kpi" })
-// app.register(chartRoutes,      { prefix: "/chart" })
-// app.register(activitiesRoutes, { prefix: "/activities" })
-// app.register(weatherRoutes,    { prefix: "/weather" })
-
+app.register(dashboardRoutes, { prefix: "/dashboard" })
 }
