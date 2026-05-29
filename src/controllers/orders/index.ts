@@ -157,6 +157,15 @@ export async function ordersRoutes(app: FastifyTypeInstance) {
       }
     })
 
+      await Promise.all(
+      items.map(async (item) => {
+      await prisma.product.update({
+        where: { id: item.productId },
+        data: { quantity: { decrement: item.quantity } }
+      })
+    })
+  )
+
     return reply.status(201).send({ id: order.id })
   })
 

@@ -60,21 +60,10 @@ export async function productsRoutes(
     return await prisma.product.findMany({
       where: q ? {
         OR: [
-          {
-            name: {
-              contains: q
-            }
-          },
-          {
-            category: {
-              name: {
-                contains: q
-              }
-            }
-          },
+          {name: { contains: q }},
+          {category: { name: { contains: q }}},
         ]
       } : undefined,
-
       include: {
         category: true,
       },
