@@ -22,6 +22,7 @@
     "@prisma/adapter-better-sqlite3": "^7.6.0",
     "@prisma/adapter-libsql": "^7.5.0",
     "@prisma/client": "^7.6.0",
+    "@scalar/fastify-api-reference": "^1.57.5",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.8.0",

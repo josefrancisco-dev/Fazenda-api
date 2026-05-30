@@ -14,7 +14,6 @@ const categoryBodySchema = z.object({
 })
 
 export async function categoriesRoutes(app: FastifyTypeInstance) {
-
   app.get("/", {
     schema: {
       tags: ["categories"],
@@ -29,7 +28,6 @@ export async function categoriesRoutes(app: FastifyTypeInstance) {
         name: "asc"
       }
     })
-
     return categories.map(category => ({
       id: category.id,
       name: category.name,

@@ -1,9 +1,24 @@
 import { FastifyTypeInstance } from "../../types"
 import prisma from "../../../prisma"
+import z from "zod"
 
 export async function authRoutes(app: FastifyTypeInstance) {
 
-  app.post('/login', async (request, reply) => {
+  app.post('/login', {
+    schema: {
+      tags: ["auth"],
+      description: "Login de utilizador",
+      body: z.object({
+        email:    z.string().email(),
+        password: z.string().min(1),
+      }),
+      response: {
+        200: z.object({ token: z.string() }),
+        400: z.object({ error: z.string() }),
+      }
+    }
+  },
+    async (request, reply) => {
     const { email, password } = request.body as any
 
     const user = await prisma.client.findUnique({

@@ -44,7 +44,6 @@ export async function checkoutRoutes(app: FastifyTypeInstance) {
       }
     })
 
-    // ❌ Não existe
     if (!order) {
       return reply.status(404).send({ message: "Order not found" })
     }
@@ -53,11 +52,6 @@ export async function checkoutRoutes(app: FastifyTypeInstance) {
     if (order.clientId !== userId) {
       return reply.status(403).send({ message: "Not allowed" })
     }
-
-    // ❌ Já pago
-    // if (order.status === "Concluído") {
-    //   return reply.status(400).send({ message: "Order already paid" })
-    // }
 
     // 💰 Criar sessão Stripe
     const session = await stripe.checkout.sessions.create({
@@ -82,7 +76,6 @@ export async function checkoutRoutes(app: FastifyTypeInstance) {
       cancel_url: "http://localhost:5173/cancel",
     })
 
-    // 💾 Guardar sessão
     await prisma.order.update({
       where: { id },
       data: {

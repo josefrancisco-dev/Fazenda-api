@@ -10,7 +10,6 @@ import path from "node:path"
 import jwt from "./plugins/jwt";
 
 const app = fastify().withTypeProvider<ZodTypeProvider>()
-// app.register(fastifyCors, {origin : "*"})
 app.register(fastifyCors, {
   origin: "*",
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"]
@@ -29,15 +28,29 @@ app.register(fastifySwagger, {
       version :  "1.0.0"
     }
   }, 
+   transform: ({ schema, url }) => {
+    if (schema?.querystring) { 
+      schema = {
+        ...schema,
+        querystring: {
+          type:       "object",
+          properties: {
+            q: { type: "string", description: "Pesquisar" }
+          }
+        }
+      }
+    }
+    return { schema, url }
+  }
 })
 
 app.register(fastifySwaggerUi, {
-  routePrefix :  "/docs", 
+  routePrefix: "/docs",
 })
 
 app.register(fastifyStatic, {
   root: path.resolve("uploads"), 
-  prefix: "/uploads/",          
+  prefix: "/uploads/",         
 })
 
 registerRoutes(app)
