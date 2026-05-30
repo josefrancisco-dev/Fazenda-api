@@ -36,24 +36,38 @@ const shoppingBodySchema = z.object({
 export async function shoppingRoutes(app: FastifyTypeInstance) {
 
   // GET ALL
+
   app.get("/", {
-    schema: {
-      tags: ["shopping"],
-      description: "List all shopping orders",
-      response: { 200: z.array(shoppingResponseSchema) }
-    }
-  }, async () => {
-    return await prisma.shopping.findMany({
-      include: { 
-        supplier: true,
-        items: true 
-      },
-      orderBy: { number: "desc" }
-    })
+  preHandler: [app.authenticate],
+  schema: {
+    tags: ["shopping"],
+    description: "List all shopping orders",
+    querystring: z.object({
+      q: z.string().optional(),
+    }),
+    response: { 200: z.array(shoppingResponseSchema) }
+  }
+}, async (req) => {
+  const { q } = req.query
+
+  return await prisma.shopping.findMany({
+    where: q ? {
+      OR: [
+        { supplier: { name:    { contains: q } } },
+        { supplier: { company: { contains: q } } },
+      ],
+    } : undefined,
+    include: {
+      supplier: true,
+      items: true
+    },
+    orderBy: { number: "desc" }
   })
+})
 
   // GET ONE
   app.get("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["shopping"],
       description: "Get shopping order by ID",
@@ -81,6 +95,7 @@ export async function shoppingRoutes(app: FastifyTypeInstance) {
 
   // POST - Criação da compra com itens (total calculado no backend)
   app.post("/", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["shopping"],
       description: "Create a new shopping order",
@@ -138,6 +153,7 @@ export async function shoppingRoutes(app: FastifyTypeInstance) {
 
   // PUT - Atualização completa
   app.put("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["shopping"],
       description: "Update a shopping order fully",
@@ -187,7 +203,7 @@ export async function shoppingRoutes(app: FastifyTypeInstance) {
           total,
           status,
           items: {
-            create: items  // Cria os novos itens
+            create: items 
           }
         }
       })
@@ -198,6 +214,7 @@ export async function shoppingRoutes(app: FastifyTypeInstance) {
 
   // PATCH - Atualização parcial
   app.patch("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["shopping"],
       description: "Partially update a shopping order",
@@ -259,6 +276,7 @@ export async function shoppingRoutes(app: FastifyTypeInstance) {
 
   // DELETE
   app.delete("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["shopping"],
       description: "Delete a shopping order",

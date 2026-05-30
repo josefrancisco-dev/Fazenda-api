@@ -7,15 +7,19 @@ import { ZodTypeProvider } from "fastify-type-provider-zod";
 import { registerRoutes } from "./routes/routes";
 import fastifyStatic from "@fastify/static"
 import path from "node:path"
-
-
+import jwt from "./plugins/jwt";
 
 const app = fastify().withTypeProvider<ZodTypeProvider>()
-
-app.register(fastifyCors, {origin : "*"})
+app.register(fastifyCors, {
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE"]
+})
 
 app.setValidatorCompiler(validatorCompiler)
 app.setSerializerCompiler(serializerCompiler)
+
+// 🔐 REGISTRA JWT (ANTES DAS ROTAS)
+app.register(jwt)
 
 app.register(fastifySwagger, {
   openapi :  {
@@ -23,21 +27,33 @@ app.register(fastifySwagger, {
       title :   "Api fazenda",
       version :  "1.0.0"
     }
+  }, 
+   transform: ({ schema, url }) => {
+    if (schema?.querystring) { 
+      schema = {
+        ...schema,
+        querystring: {
+          type:       "object",
+          properties: {
+            q: { type: "string", description: "Pesquisar" }
+          }
+        }
+      }
+    }
+    return { schema, url }
   }
 })
 
 app.register(fastifySwaggerUi, {
-  routePrefix :  "/docs", 
+  routePrefix: "/docs",
 })
 
 app.register(fastifyStatic, {
   root: path.resolve("uploads"), 
-  prefix: "/uploads/",          
+  prefix: "/uploads/",         
 })
 
-
 registerRoutes(app)
-
 
 app.listen({port: 3333}).then(() => {
   console.log("Http server runing !")

@@ -9,7 +9,8 @@ CREATE TABLE "clients" (
     "email" TEXT NOT NULL,
     "phone" TEXT NOT NULL,
     "nif" TEXT NOT NULL,
-    "avatar" TEXT
+    "avatar" TEXT,
+    "password" TEXT NOT NULL
 );
 
 -- CreateTable
@@ -106,9 +107,6 @@ CREATE UNIQUE INDEX "suppliers_email_key" ON "suppliers"("email");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "suppliers_nif_key" ON "suppliers"("nif");
-
--- CreateIndex
-CREATE UNIQUE INDEX "stocks_productId_key" ON "stocks"("productId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "orders_number_key" ON "orders"("number");

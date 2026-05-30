@@ -1,34 +1,118 @@
 import z from "zod"
 import { FastifyTypeInstance } from "../../types"
-import { randomUUID } from "node:crypto"
+import prisma from "../../../prisma"
 
-const orderResponseSchema = z.object({
+
+const productSchema = z.object({
+  id:       z.string().uuid(),
+  name:     z.string(),
+  category: z.object({
   id: z.string().uuid(),
-  // number: z.number(),
-  client: z.string(),
-  // date: z.string(),
-  itens: z.number(),
-  // total: z.number(),
-  status: z.string(),
+  name: z.string(),
+  }),
+  categoryId :  z.string(),
+  quantity: z.number(),
+  unit:     z.string(),
+  price:    z.number(),
+  banner:   z.string(),
+  emoji:    z.string(),
+  image:    z.string(),
 })
 
-const orderBodySchema = orderResponseSchema.omit({ id: true })
+const clientSchema = z.object({
+  id:      z.string().uuid(),
+  name:    z.string(),
+  email:   z.string().email(),
+  phone:   z.string(),
+  company: z.string(),
+  nif:     z.string(),
+  status:  z.string(),
+  role:    z.string(),
+  avatar:  z.string().nullable(),
+})
 
-type Order = z.infer<typeof orderResponseSchema>
+export const orderItemSchema = z.object({
+  quantity:  z.number().min(1),
+  price:     z.number().min(0),
+  productId: z.string().uuid(),
+})
 
-const orders: Order[] = []
+export const orderItemFullSchema = orderItemSchema.extend({
+  id:      z.string().uuid(),
+  orderId: z.string().uuid(),
+  product: productSchema, 
+})
+
+export const orderResponseSchema = z.object({
+  id:       z.string().uuid(),
+  number:   z.number(),
+  date:     z.string(),
+  total:    z.number().min(0),
+  status:  z.enum([
+  "Pendente",
+  "Confirmado",
+  "Em_processamento",
+  "Enviado",
+  "Entregue"
+  ]),
+  clientId: z.string().uuid(),
+  client:   clientSchema,          
+  items:    z.array(orderItemFullSchema).min(1),
+})
+
+const orderBodySchema = z.object({
+  number: z.number(),
+  date:   z.string(),
+  items:  z.array(orderItemSchema).min(1, 'Adicione pelo menos um item'),
+})
+
+const orderUpdateSchema = z.object({
+  status: orderResponseSchema.shape.status
+})
+
+const orderInclude = {
+ items: {
+    include: {
+      product: {
+        include: {
+          category: true 
+        }
+      }
+    }
+  },
+  client: true
+}
 
 export async function ordersRoutes(app: FastifyTypeInstance) {
 
+ //get all
   app.get("/", {
-    schema: {
-      tags: ["orders"],
-      description: "List all orders",
-      response: { 200: z.array(orderResponseSchema) }
-    }
-  }, () => orders)
+  preHandler: [app.authenticate],
+  schema: {
+    tags: ["orders"],
+    description: "List all orders",
+    querystring: z.object({
+      q: z.string().optional(),
+    }),
+    response: { 200: z.array(orderResponseSchema) }
+  }
+}, async (req) => {
+  const { q } = req.query
+
+  return prisma.order.findMany({
+    where: q ? {
+      OR: [
+        { client: { name:    { contains: q } } },
+        { client: { company: { contains: q } } },
+      ],
+    } : undefined,
+    include: orderInclude,
+    orderBy: { number: "asc" }
+  })
+})
 
   app.get("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["orders"],
       description: "Get order by ID",
@@ -39,12 +123,17 @@ export async function ordersRoutes(app: FastifyTypeInstance) {
       }
     }
   }, async (request, reply) => {
-    const order = orders.find(o => o.id === request.params.id)
+    const order = await prisma.order.findUnique({
+      where: { id: request.params.id },
+      include: orderInclude
+    })
+
     if (!order) return reply.status(404).send({ message: "Order not found" })
     return reply.status(200).send(order)
   })
 
   app.post("/", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["orders"],
       description: "Create a new order",
@@ -52,30 +141,81 @@ export async function ordersRoutes(app: FastifyTypeInstance) {
       response: { 201: z.object({ id: z.string() }) }
     }
   }, async (request, reply) => {
-    const newOrder: Order = { id: randomUUID(), ...request.body }
-    orders.push(newOrder)
-    return reply.status(201).send({ id: newOrder.id })
+    const { number, date, items } = request.body
+    const clientId = request.user.sub
+
+    const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+
+    const order = await prisma.order.create({
+      data: {
+        number,
+        date,
+        total,
+        status: "Pendente",
+        clientId,
+        items: { create: items },
+      }
+    })
+
+      await Promise.all(
+      items.map(async (item) => {
+      await prisma.product.update({
+        where: { id: item.productId },
+        data: { quantity: { decrement: item.quantity } }
+      })
+    })
+  )
+
+    return reply.status(201).send({ id: order.id })
   })
 
   app.put("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["orders"],
-      description: "Update an order fully",
-      params: z.object({ id: z.string().uuid() }),
-      body: orderBodySchema,
+      description: "Update order status",
+      params: z.object({
+        id: z.string().uuid()
+      }),
+      body: orderUpdateSchema,
       response: {
-        200: z.object({ message: z.string() }),
-        404: z.object({ message: z.string() })
+        200: z.object({
+          message: z.string()
+        }),
+        404: z.object({
+          message: z.string()
+        })
       }
     }
   }, async (request, reply) => {
-    const index = orders.findIndex(o => o.id === request.params.id)
-    if (index === -1) return reply.status(404).send({ message: "Order not found" })
-    orders[index] = { id: request.params.id, ...request.body }
-    return reply.status(200).send({ message: "Order updated successfully" })
+
+    const { id } = request.params
+    const { status } = request.body
+
+    const exists = await prisma.order.findUnique({
+      where: { id }
+    })
+
+    if (!exists) {
+      return reply.status(404).send({
+        message: "Order not found"
+      })
+    }
+
+    await prisma.order.update({
+      where: { id },
+      data: {
+        status
+      }
+    })
+
+    return reply.status(200).send({
+      message: "Order status updated successfully"
+    })
   })
 
   app.patch("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["orders"],
       description: "Partially update an order",
@@ -87,13 +227,30 @@ export async function ordersRoutes(app: FastifyTypeInstance) {
       }
     }
   }, async (request, reply) => {
-    const index = orders.findIndex(o => o.id === request.params.id)
-    if (index === -1) return reply.status(404).send({ message: "Order not found" })
-    orders[index] = { ...orders[index], ...request.body }
+    const { id } = request.params
+    const { items, ...rest } = request.body
+
+    const exists = await prisma.order.findUnique({ where: { id } })
+    if (!exists) return reply.status(404).send({ message: "Order not found" })
+
+    const total = items
+      ? items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+      : undefined
+
+    await prisma.order.update({
+      where: { id },
+      data: {
+        ...rest,
+        ...(total !== undefined && { total }),
+        ...(items && { items: { deleteMany: {}, create: items } })
+      }
+    })
+
     return reply.status(200).send({ message: "Order patched successfully" })
   })
 
   app.delete("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["orders"],
       description: "Delete an order",
@@ -104,9 +261,12 @@ export async function ordersRoutes(app: FastifyTypeInstance) {
       }
     }
   }, async (request, reply) => {
-    const index = orders.findIndex(o => o.id === request.params.id)
-    if (index === -1) return reply.status(404).send({ message: "Order not found" })
-    orders.splice(index, 1)
+    const { id } = request.params
+
+    const exists = await prisma.order.findUnique({ where: { id } })
+    if (!exists) return reply.status(404).send({ message: "Order not found" })
+
+    await prisma.order.delete({ where: { id } })
     return reply.status(200).send({ message: "Order deleted successfully" })
   })
 }

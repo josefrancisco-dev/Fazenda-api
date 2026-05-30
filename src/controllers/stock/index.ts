@@ -2,63 +2,87 @@ import z from "zod"
 import { FastifyTypeInstance } from "../../types"
 import prisma from "prisma"
 
-// 🔁 Enum igual ao Prisma
 const stockStatusEnum = z.enum([
   "Em_Estoque",
   "Estoque_Medio",
   "Estoque_Baixo"
 ])
 
-// 🧠 função para calcular status
+const categorySchema = z.object({
+  id:          z.string().uuid(),
+  name:        z.string(),
+  description: z.string().nullable(),
+})
+
 function getStockStatus(quantity: number) {
   if (quantity <= 5) return "Estoque_Baixo"
   if (quantity <= 20) return "Estoque_Medio"
   return "Em_Estoque"
 }
 
-// 📦 RESPONSE
 const stockResponseSchema = z.object({
   id: z.string().uuid(),
   quantity: z.number(),
   value_Total: z.number(),
   status: stockStatusEnum,
   productId: z.string().uuid(),
+  product: z.object({     
+    name: z.string(),
+    category: categorySchema,
+    unit: z.string(),
+    price : z.number(),
+  }).optional()
 })
 
-// 📝 BODY
+
 const stockBodySchema = z.object({
   quantity: z.number().min(0),
   value_Total: z.number().min(0),
   productId: z.string().uuid()
 })
 
-// 📥 ENTRADA
-const stockInSchema = z.object({
-  productId: z.string().uuid(),
-  quantity: z.number().positive(),
-  price: z.number().positive()
-})
-
-// 📤 SAÍDA
-const stockOutSchema = z.object({
-  productId: z.string().uuid(),
-  quantity: z.number().positive()
-})
-
 export async function stockRoutes(app: FastifyTypeInstance) {
 
-  // 🔍 LISTAR
+  //get all
   app.get("/", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["stock"],
+      querystring: z.object({
+        q: z.string().optional(),
+      }),
       response: { 200: z.array(stockResponseSchema) }
     }
-  }, async () => {
-    return prisma.stock.findMany()
+  }, async (req) => {
+    const { q } = req.query
+
+    return prisma.stock.findMany({
+      where: q ? {
+        OR: [
+          { product: { name:     { contains: q } } },
+          { product: { category:  {name :  { contains: q }}}},
+        ],
+      } : undefined,
+      select: {
+        id: true,
+        quantity: true,
+        value_Total: true,
+        status: true,
+        productId: true,
+        product: {
+          select: {
+            name: true,
+            category: true,
+            unit: true,
+            price: true,
+          }
+        }
+      }
+    })
   })
 
-  // 🔍 BUSCAR POR ID
   app.get("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["stock"],
       params: z.object({ id: z.string().uuid() }),
@@ -70,7 +94,22 @@ export async function stockRoutes(app: FastifyTypeInstance) {
   }, async (request, reply) => {
 
     const stock = await prisma.stock.findUnique({
-      where: { id: request.params.id }
+      where: { id: request.params.id },
+      select: {
+        id: true,
+        quantity: true,
+        value_Total: true,
+        status: true,
+        productId: true,
+        product: {
+          select: {
+            name: true,
+            category: true,
+            unit: true,
+            price: true,
+          }
+        }
+      }
     })
 
     if (!stock) {
@@ -80,46 +119,39 @@ export async function stockRoutes(app: FastifyTypeInstance) {
     return stock
   })
 
-
-// ➕ CRIAR
-app.post("/", {
-  schema: {
-    tags: ["stock"],
-    body: stockBodySchema,
-    response: {
-      201: stockResponseSchema,
-      400: z.object({ message: z.string() })
+  app.post("/", {
+    preHandler: [app.authenticate],
+    schema: {
+      tags: ["stock"],
+      body: stockBodySchema,
+      response: {
+        201: stockResponseSchema,
+      }
     }
-  }
-}, async (request, reply) => {
+  }, async (request, reply) => {
+    const { quantity, value_Total, productId } = request.body
 
-  const exists = await prisma.stock.findUnique({
-    where: { productId: request.body.productId }
-  })
-
-  if (exists) {
-    return reply.status(400).send({
-      message: "Este produto já possui stock"
+    const stock = await prisma.stock.create({
+      data: {
+        quantity,
+        value_Total,
+        productId,
+        status: getStockStatus(quantity)
+      },
     })
-  }
 
-  // Destructure the values from request.body
-  const { quantity, value_Total, productId } = request.body
+    await prisma.product.update({
+      where: { id: productId },
+      data: {
+        quantity: { increment: quantity }
+      }
+    })
 
-  const stock = await prisma.stock.create({
-    data: {
-      quantity,
-      value_Total,
-      productId,
-      status: getStockStatus(quantity) // ✅ obrigatório
-    }
+    return reply.status(201).send(stock)
   })
 
-  return reply.status(201).send(stock)
-})
-
-// 🔄 UPDATE COMPLETO
   app.put("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["stock"],
       params: z.object({ id: z.string().uuid() }),
@@ -150,8 +182,8 @@ app.post("/", {
     return { message: "Stock atualizado com sucesso" }
   })
 
-  // 🩹 UPDATE PARCIAL
   app.patch("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["stock"],
       params: z.object({ id: z.string().uuid() }),
@@ -180,8 +212,8 @@ app.post("/", {
     return { message: "Stock atualizado parcialmente" }
   })
 
-  // ❌ DELETE
   app.delete("/:id", {
+    preHandler: [app.authenticate],
     schema: {
       tags: ["stock"],
       params: z.object({ id: z.string().uuid() }),
@@ -203,70 +235,4 @@ app.post("/", {
     return { message: "Stock removido com sucesso" }
   })
 
-  // 📥 ENTRADA DE STOCK
-  app.post("/in", {
-    schema: {
-      tags: ["stock"],
-      body: stockInSchema
-    }
-  }, async (request, reply) => {
-
-    const { productId, quantity, price } = request.body
-
-    const stock = await prisma.stock.findUnique({
-      where: { productId }
-    })
-
-    if (!stock) {
-      return reply.status(404).send({ message: "Stock não encontrado" })
-    }
-
-    const newQuantity = stock.quantity + quantity
-
-    await prisma.stock.update({
-      where: { productId },
-      data: {
-        quantity: newQuantity,
-        value_Total: stock.value_Total + (quantity * price),
-        status: getStockStatus(newQuantity)
-      }
-    })
-
-    return { message: "Entrada realizada com sucesso" }
-  })
-
-  // 📤 SAÍDA DE STOCK
-  app.post("/out", {
-    schema: {
-      tags: ["stock"],
-      body: stockOutSchema
-    }
-  }, async (request, reply) => {
-
-    const { productId, quantity } = request.body
-
-    const stock = await prisma.stock.findUnique({
-      where: { productId }
-    })
-
-    if (!stock) {
-      return reply.status(404).send({ message: "Stock não encontrado" })
-    }
-
-    if (stock.quantity < quantity) {
-      return reply.status(400).send({ message: "Estoque insuficiente" })
-    }
-
-    const newQuantity = stock.quantity - quantity
-
-    await prisma.stock.update({
-      where: { productId },
-      data: {
-        quantity: newQuantity,
-        status: getStockStatus(newQuantity)
-      }
-    })
-
-    return { message: "Saída realizada com sucesso" }
-  })
 }
