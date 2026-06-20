@@ -41,7 +41,7 @@ export async function dashboardRoutes(app: FastifyTypeInstance) {
       prisma.order.findMany({
         take: 3,
         orderBy: { date: "desc" },
-        include: { client: { select: { company: true } } }
+        include: { client: { select: { name: true } } }
       }),
       prisma.shopping.findMany({
         take: 3,
@@ -60,7 +60,7 @@ export async function dashboardRoutes(app: FastifyTypeInstance) {
     const atividades = [
       ...ultimosPedidos.map(p => ({
         tipo: "pedido",
-        descricao: `Novo pedido recebido de ${p.client?.company ?? "cliente"}`,
+        descricao: `Novo pedido recebido de ${p.client?.name ?? "cliente"}`,
         data: p.date,
       })),
       ...ultimasCompras.map(c => ({

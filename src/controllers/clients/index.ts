@@ -6,13 +6,13 @@ import { Role } from "@prisma/client"
 const clientResponseSchema = z.object({
   id:      z.string().uuid(),
   name:    z.string(),
-  role:    z.enum(['Client', 'Supplier', 'Admin' ]), 
+  role:    z.enum(['Client', 'Commercial_Manager', 'Admin' ]), 
   status:  z.enum(['Customer', 'Lead', 'Active']),
   date:    z.string(),
-  company: z.string(),
+  isCorporative: z.string(),
   email:   z.email(),
   phone:   z.string(),
-  nif:     z.string(),
+  nif:     z.string().nullable().optional(),
   password:  z.string(),
   avatar:  z.string().nullable().optional(),
 })
@@ -39,7 +39,7 @@ export async function clientsRoutes(app: FastifyTypeInstance) {
       OR: [
         { name:    { contains: q } },
         { email:   { contains: q } },
-        { company: { contains: q } },
+        { isCorporative: { contains: q } },
       ],
     } : undefined,
     orderBy: { name: "asc" }
@@ -80,19 +80,19 @@ export async function clientsRoutes(app: FastifyTypeInstance) {
       }
     }
   }, async (request, reply) => {
-    const { company, name, email, phone, role = Role.Client, nif, password, avatar, status } = request.body
+    const { isCorporative, name, email, phone, role = Role.Client, nif, password, avatar, status } = request.body
 
     const alreadyExists = await prisma.client.findFirst({ where: { email } })
     if (alreadyExists) return reply.status(400).send({ message: "Cliente já existe!" })
 
     const client = await prisma.client.create({
       data: {
-        company,
+        isCorporative,
         name,
         email,
         phone,
         role,
-        nif,
+        nif: nif || null,
         password, 
         avatar: avatar ?? null,
         status,

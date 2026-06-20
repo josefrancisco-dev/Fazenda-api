@@ -31,6 +31,7 @@ const stockResponseSchema = z.object({
     category: categorySchema,
     unit: z.string(),
     price : z.number(),
+    image : z.string().optional(),
   }).optional()
 })
 
@@ -75,6 +76,7 @@ export async function stockRoutes(app: FastifyTypeInstance) {
             category: true,
             unit: true,
             price: true,
+            image : true
           }
         }
       }
@@ -107,6 +109,7 @@ export async function stockRoutes(app: FastifyTypeInstance) {
             category: true,
             unit: true,
             price: true,
+            image : true
           }
         }
       }

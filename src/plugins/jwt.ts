@@ -7,7 +7,6 @@ export default fp(async (app) => {
     secret: "supersecret"
   })
 
-  // 🔐 define authenticate aqui
   app.decorate("authenticate", async (request, reply) => {
     try {
       await request.jwtVerify()
