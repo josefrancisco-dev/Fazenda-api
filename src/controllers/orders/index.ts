@@ -24,8 +24,8 @@ const clientSchema = z.object({
   name:    z.string(),
   email:   z.string().email(),
   phone:   z.string(),
-  company: z.string(),
-  nif:     z.string(),
+  isCorporative: z.string(),
+  nif:     z.string().nullable().optional(),
   status:  z.string(),
   role:    z.string(),
   avatar:  z.string().nullable(),
@@ -103,7 +103,7 @@ export async function ordersRoutes(app: FastifyTypeInstance) {
     where: q ? {
       OR: [
         { client: { name:    { contains: q } } },
-        { client: { company: { contains: q } } },
+        { client: { isCorporative: { contains: q } } },
       ],
     } : undefined,
     include: orderInclude,

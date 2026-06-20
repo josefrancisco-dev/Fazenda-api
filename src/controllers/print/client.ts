@@ -5,13 +5,13 @@ import prisma from "../../../prisma"
 const clientResponseSchema = z.object({
   id:      z.string().uuid(),
   name:    z.string(),
-  role:    z.enum(['Client', 'Supplier', 'Admin' ]),
+  role:    z.enum(['Client', 'Commercial_Manager', 'Admin' ]),
   status:  z.enum(['Customer', 'Lead', 'Active']),
   date:    z.string(),
-  company: z.string(),
+  isCorporative: z.string(),
   email:   z.email(),
   phone:   z.string(),
-  nif:     z.string(),
+  nif:     z.string().nullable().optional(),
   password:  z.string(),
   avatar:  z.string().nullable().optional(),
 })

@@ -58,7 +58,7 @@ export async function authRoutes(app: FastifyTypeInstance) {
       email: true,
       role: true, 
       phone:   true,  
-      company: true,   
+      isCorporative: true,   
       nif:     true, 
       avatar:  true,
       }

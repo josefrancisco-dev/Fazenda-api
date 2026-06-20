@@ -17,7 +17,7 @@ import { ZodTypeProvider } from "fastify-type-provider-zod"
  > 
 
 export type Client = {
-  company: string
+  isCorporative: string
   name: string
   email: string
   phone: string
