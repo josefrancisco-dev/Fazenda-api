@@ -60,7 +60,7 @@ export async function checkoutRoutes(app: FastifyTypeInstance) {
 
       line_items: order.items.map(item => ({
         price_data: {
-          currency: "usd",
+          currency: "aoa",
           product_data: {
             name: item.product.name,
           },
@@ -72,7 +72,7 @@ export async function checkoutRoutes(app: FastifyTypeInstance) {
       metadata: {
         orderId: order.id
       },
-      success_url: "http://localhost:5173/success?session_id={CHECKOUT_SESSION_ID}",
+      success_url: "http://localhost:3000/success?session_id={CHECKOUT_SESSION_ID}",
       cancel_url: "http://localhost:5173/cancel",
     })
 

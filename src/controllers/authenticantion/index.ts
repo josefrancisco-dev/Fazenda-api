@@ -62,7 +62,6 @@ export async function authRoutes(app: FastifyTypeInstance) {
       nif:     true, 
       avatar:  true,
       }
-
     })
 
     if(! client) {
