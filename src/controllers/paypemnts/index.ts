@@ -34,7 +34,6 @@ export async function checkoutRoutes(app: FastifyTypeInstance) {
     const { id } = request.params
     const userId = request.user.sub
 
-    // 🔍 Buscar pedido
     const order = await prisma.order.findUnique({
       where: { id },
       include: {
@@ -48,12 +47,10 @@ export async function checkoutRoutes(app: FastifyTypeInstance) {
       return reply.status(404).send({ message: "Order not found" })
     }
 
-    // 🔒 Segurança
     if (order.clientId !== userId) {
       return reply.status(403).send({ message: "Not allowed" })
     }
 
-    // 💰 Criar sessão Stripe
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
@@ -73,7 +70,7 @@ export async function checkoutRoutes(app: FastifyTypeInstance) {
         orderId: order.id
       },
       success_url: "http://localhost:3000/success?session_id={CHECKOUT_SESSION_ID}",
-      cancel_url: "http://localhost:5173/cancel",
+      cancel_url: "http://localhost:3000/cancel",
     })
 
     await prisma.order.update({

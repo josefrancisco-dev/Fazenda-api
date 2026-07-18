@@ -85,4 +85,30 @@ export async function ordersPrintRoutes(app: FastifyTypeInstance) {
   }, async () => {
     return prisma.order.findMany({ include: orderInclude })
   })
+
+app.get("/:id", {
+  preHandler: [app.authenticate],
+  schema: {
+    tags: ["print"],
+    description: "Get single order for receipt",
+    params: z.object({ id: z.string().uuid() }),
+    response: {
+      200: orderResponseSchema,
+      404: z.object({ message: z.string() })
+    }
+  }
+}, async (request, reply) => {
+  const { id } = request.params
+
+  const order = await prisma.order.findUnique({
+    where: { id },
+    include: orderInclude
+  })
+
+  if (!order) {
+    return reply.status(404).send({ message: "Pedido não encontrado" })
+  }
+
+  return order
+})
 }

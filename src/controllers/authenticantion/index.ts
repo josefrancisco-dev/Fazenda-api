@@ -1,6 +1,7 @@
 import { FastifyTypeInstance } from "../../types"
 import prisma from "../../../prisma"
 import z from "zod"
+import { comparePassword } from "@/utils/password"
 
 export async function authRoutes(app: FastifyTypeInstance) {
 
@@ -28,8 +29,11 @@ export async function authRoutes(app: FastifyTypeInstance) {
     if (!user) {
       return reply.status(400).send({ error: "User not found" })
     }
+    
+    const isValid = await comparePassword(password, user.password)
+
     // const isValid = await bcrypt.compare(password, user.password)
-    const isValid = await password === user.password
+    // const isValid = await password === user.password
 
     if (!isValid) {
       return reply.status(400).send({ error: "Invalid password" })
@@ -41,7 +45,14 @@ export async function authRoutes(app: FastifyTypeInstance) {
       role: user.role,
     })
 
-    return { token }
+    return { token , 
+        user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      }
+    }
   })
 
 
