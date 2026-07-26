@@ -12,23 +12,64 @@ const clientResponseSchema = z.object({
   email:   z.email(),
   phone:   z.string(),
   nif:     z.string().nullable().optional(),
-  password:  z.string(),
   avatar:  z.string().nullable().optional(),
 })
 
 export async function clientsPrintRoutes(app: FastifyTypeInstance) {
 
-  // GET ALL
   app.get("/", {
     preHandler: [app.authenticate],
     schema: {
       tags: ["print"],
-      description: "List all clients",
+      description: "List clients for report (respects q/status/phone/nif filters when provided)",
+      querystring: z.object({
+        q: z.string().optional(),
+        status: clientResponseSchema.shape.status.optional(),
+        phone: z.string().optional(),
+        nif: z.string().optional(),
+        from: z.string().optional(),
+        to: z.string().optional(),
+      }),
       response: { 200: z.array(clientResponseSchema) }
     }
-  }, async () => {
+  }, async (request) => {
+    const { q, status, phone, nif , from , to} = request.query
+
+    const dateFilter = from || to ? {
+      date: {
+        ...(from && { gte: from }),
+        ...(to && { lte: to }),
+      }
+    } : {}
     return await prisma.client.findMany({
-      orderBy: { name: "asc" }
+      where: {
+        ...(q && {
+          OR: [
+            { name:          { contains: q } },
+            { email:         { contains: q } },
+            { isCorporative: { contains: q } },
+            { phone:         { contains: q } },
+            { nif:           { contains: q } },
+          ],
+        }),
+        ...(status && { status }),
+        ...(phone && { phone: { contains: phone } }),
+        ...(nif && { nif: { contains: nif } }),
+        ...dateFilter,
+      },
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+        isCorporative: true,
+        nif: true,
+        avatar: true,
+        date: true,
+      }
     })
   })
 }

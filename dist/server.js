@@ -179,20 +179,39 @@ async function clientsRoutes(app2) {
       tags: ["clients"],
       description: "List all clients",
       querystring: import_zod.default.object({
-        q: import_zod.default.string().optional()
+        q: import_zod.default.string().optional(),
+        status: clientResponseSchema.shape.status.optional(),
+        phone: import_zod.default.string().optional(),
+        nif: import_zod.default.string().optional(),
+        from: import_zod.default.string().optional(),
+        to: import_zod.default.string().optional()
       }),
       response: { 200: import_zod.default.array(clientResponseSchema) }
     }
   }, async (req) => {
-    const { q } = req.query;
+    const { q, status, phone, nif, from, to } = req.query;
+    const dateFilter = from || to ? {
+      date: {
+        ...from && { gte: from },
+        ...to && { lte: to }
+      }
+    } : {};
     return await prisma_default.client.findMany({
-      where: q ? {
-        OR: [
-          { name: { contains: q } },
-          { email: { contains: q } },
-          { isCorporative: { contains: q } }
-        ]
-      } : void 0,
+      where: {
+        ...q && {
+          OR: [
+            { name: { contains: q } },
+            { email: { contains: q } },
+            { isCorporative: { contains: q } },
+            { phone: { contains: q } },
+            { nif: { contains: q } }
+          ]
+        },
+        ...status && { status },
+        ...phone && { phone: { contains: phone } },
+        ...nif && { nif: { contains: nif } },
+        ...dateFilter
+      },
       orderBy: { name: "asc" },
       select: {
         id: true,
@@ -205,7 +224,6 @@ async function clientsRoutes(app2) {
         nif: true,
         avatar: true,
         date: true
-        // ❌ password NÃO selecionado
       }
     });
   });
@@ -234,7 +252,6 @@ async function clientsRoutes(app2) {
         nif: true,
         avatar: true,
         date: true
-        // ❌ password NÃO selecionado
       }
     });
     if (!client) return reply.status(404).send({ message: "Client not found" });
@@ -307,7 +324,6 @@ async function clientsRoutes(app2) {
         nif: true,
         avatar: true,
         date: true
-        // ❌ password NÃO retornado
       }
     });
     return reply.status(200).send({ message: "Client updated successfully" });
@@ -348,7 +364,6 @@ async function clientsRoutes(app2) {
         nif: true,
         avatar: true,
         date: true
-        // ❌ password NÃO retornado
       }
     });
     return reply.status(200).send({ message: "Client patched successfully" });
@@ -1980,7 +1995,6 @@ var clientResponseSchema2 = import_zod14.default.object({
   email: import_zod14.default.email(),
   phone: import_zod14.default.string(),
   nif: import_zod14.default.string().nullable().optional(),
-  password: import_zod14.default.string(),
   avatar: import_zod14.default.string().nullable().optional()
 });
 async function clientsPrintRoutes(app2) {
@@ -1988,12 +2002,54 @@ async function clientsPrintRoutes(app2) {
     preHandler: [app2.authenticate],
     schema: {
       tags: ["print"],
-      description: "List all clients",
+      description: "List clients for report (respects q/status/phone/nif filters when provided)",
+      querystring: import_zod14.default.object({
+        q: import_zod14.default.string().optional(),
+        status: clientResponseSchema2.shape.status.optional(),
+        phone: import_zod14.default.string().optional(),
+        nif: import_zod14.default.string().optional(),
+        from: import_zod14.default.string().optional(),
+        to: import_zod14.default.string().optional()
+      }),
       response: { 200: import_zod14.default.array(clientResponseSchema2) }
     }
-  }, async () => {
+  }, async (request) => {
+    const { q, status, phone, nif, from, to } = request.query;
+    const dateFilter = from || to ? {
+      date: {
+        ...from && { gte: from },
+        ...to && { lte: to }
+      }
+    } : {};
     return await prisma_default.client.findMany({
-      orderBy: { name: "asc" }
+      where: {
+        ...q && {
+          OR: [
+            { name: { contains: q } },
+            { email: { contains: q } },
+            { isCorporative: { contains: q } },
+            { phone: { contains: q } },
+            { nif: { contains: q } }
+          ]
+        },
+        ...status && { status },
+        ...phone && { phone: { contains: phone } },
+        ...nif && { nif: { contains: nif } },
+        ...dateFilter
+      },
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+        isCorporative: true,
+        nif: true,
+        avatar: true,
+        date: true
+      }
     });
   });
 }

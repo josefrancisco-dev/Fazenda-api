@@ -41,20 +41,40 @@ export async function clientsRoutes(app: FastifyTypeInstance) {
     description: "List all clients",
     querystring: z.object({
       q: z.string().optional(),
+      status: clientResponseSchema.shape.status.optional(),
+      phone: z.string().optional(),
+      nif: z.string().optional(),
+      from: z.string().optional(),
+      to: z.string().optional(),
     }),
     response: { 200: z.array(clientResponseSchema) }
   }
 }, async (req) => {
-  const { q } = req.query
+  const { q, status, phone, nif, from, to } = req.query
+
+  const dateFilter = from || to ? {
+    date: {
+      ...(from && { gte: from }),
+      ...(to && { lte: to }),
+    }
+  } : {}
 
   return await prisma.client.findMany({
-    where: q ? {
-      OR: [
-        { name:    { contains: q } },
-        { email:   { contains: q } },
-        { isCorporative: { contains: q } },
-      ],
-    } : undefined,
+    where: {
+      ...(q && {
+        OR: [
+          { name:    { contains: q } },
+          { email:   { contains: q } },
+          { isCorporative: { contains: q } },
+          { phone:   { contains: q } },
+          { nif:     { contains: q } },
+        ],
+      }),
+      ...(status && { status }),
+      ...(phone && { phone: { contains: phone } }),
+      ...(nif && { nif: { contains: nif } }),
+      ...dateFilter,
+    },
     orderBy: { name: "asc" },
     select: {
         id: true,
@@ -67,9 +87,9 @@ export async function clientsRoutes(app: FastifyTypeInstance) {
         nif: true,
         avatar: true,
         date: true,
-        // ❌ password NÃO selecionado
       }
   })
+  
 })
 
   // GET ONE
@@ -98,7 +118,6 @@ export async function clientsRoutes(app: FastifyTypeInstance) {
         nif: true,
         avatar: true,
         date: true,
-        // ❌ password NÃO selecionado
       }
     })
 
@@ -165,15 +184,12 @@ export async function clientsRoutes(app: FastifyTypeInstance) {
 
     if (!client) return reply.status(404).send({ message: "Client not found" })
 
-     // 🔑 Extrair senha do body
     const { password, ...restData } = request.body as any
     
-    // Preparar dados para atualização
     const updateData: any = { ...restData }
     
-    // 🔐 Se veio uma nova senha, aplicar hash ANTES de salvar
     if (password) {
-      updateData.password = await hashPassword(password) // ✅ Hash!
+      updateData.password = await hashPassword(password) 
     }   
 
     await prisma.client.update({
@@ -190,7 +206,6 @@ export async function clientsRoutes(app: FastifyTypeInstance) {
         nif: true,
         avatar: true,
         date: true,
-        // ❌ password NÃO retornado
       }
     })
 
@@ -219,12 +234,10 @@ export async function clientsRoutes(app: FastifyTypeInstance) {
 
     const { password, ...restData } = request.body as any
     
-    // Preparar dados para atualização
     const updateData: any = { ...restData }
     
-    // 🔐 Se veio uma nova senha, aplicar hash ANTES de salvar
     if (password) {
-      updateData.password = await hashPassword(password) // ✅ Hash!
+      updateData.password = await hashPassword(password) 
     }  
 
     await prisma.client.update({
@@ -241,7 +254,6 @@ export async function clientsRoutes(app: FastifyTypeInstance) {
         nif: true,
         avatar: true,
         date: true,
-        // ❌ password NÃO retornado
       }
     })
 
