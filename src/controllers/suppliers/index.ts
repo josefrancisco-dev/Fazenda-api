@@ -28,22 +28,41 @@ export async function supplierRoutes(app: FastifyTypeInstance) {
       description: "List all suppliers",
       querystring: z.object({
           q: z.string().optional(),
+          status: supplierResponseSchema.shape.status.optional(),
+          phone: z.string().optional(),
+          nif: z.string().optional(),
+          from: z.string().optional(),
+          to: z.string().optional(),
         }),
       response: { 200: z.array(supplierResponseSchema) }
     }
   }, async (req) => {
-    const { q } = req.query
+    const { q , status, phone, nif, from, to} = req.query
 
-    return await prisma.supplier.findMany({
-      where: q ? {
-        OR: [
-          { name:    { contains: q } },
-          { email:   { contains: q } },
-          { company: { contains: q } },
-          {  nif: { contains: q } },
-          { phone: { contains: q } },
-        ],
-      } : undefined,
+ const dateFilter = from || to ? {
+    date: {
+      ...(from && { gte: from }),
+      ...(to && { lte: to }),
+    }
+  } : {}
+
+
+     return await prisma.supplier.findMany({
+      where: {
+        ...(q && {
+          OR: [
+            { name:    { contains: q } },
+            { email:   { contains: q } },
+            { company: { contains: q } },
+            { nif:     { contains: q } },
+            { phone:   { contains: q } },
+          ],
+        }),
+        ...(status && { status }),
+        ...(phone && { phone: { contains: phone } }),
+        ...(nif && { nif: { contains: nif } }),
+        ... dateFilter,
+      },
       orderBy: { name: "asc" }
     })
   })
@@ -83,11 +102,17 @@ export async function supplierRoutes(app: FastifyTypeInstance) {
       }
     }
   }, async (request, reply) => {
-    const { company, name, email, phone, role = Role.Supplier, nif, avatar, status = PersonStatus.Active } = request.body
+    const { company, name, email, phone, role = "Supplier", nif, avatar, status = PersonStatus.Active } = request.body
 
-    const alreadyExists = await prisma.supplier.findFirst({ where: { email } })
-    if (alreadyExists) return reply.status(400).send({ message: "Fornecedor já existe!" })
-
+    const alreadyExists = await prisma.supplier.findFirst({
+      where: { OR: [{ email }, { nif }] }
+    })
+ 
+    if (alreadyExists) {
+      const field = alreadyExists.email === email ? "Email" : "NIF"
+      return reply.status(400).send({ message: `${field} já está em uso por outro fornecedor!` })
+    }
+ 
     const supplier = await prisma.supplier.create({
       data: {
         company,
