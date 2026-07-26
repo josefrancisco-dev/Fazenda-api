@@ -136,20 +136,42 @@ var prisma_default = prisma;
 
 // src/controllers/clients/index.ts
 var import_client2 = require("@prisma/client");
+
+// src/utils/password.ts
+var import_bcrypt = __toESM(require("bcrypt"));
+var SALT_ROUNDS = 10;
+async function hashPassword(password) {
+  return await import_bcrypt.default.hash(password, SALT_ROUNDS);
+}
+async function comparePassword(password, hash) {
+  return await import_bcrypt.default.compare(password, hash);
+}
+
+// src/controllers/clients/index.ts
 var clientResponseSchema = import_zod.default.object({
   id: import_zod.default.string().uuid(),
   name: import_zod.default.string(),
-  role: import_zod.default.enum(["Client", "Supplier", "Admin"]),
+  role: import_zod.default.enum(["Client", "Commercial_Manager", "Admin"]),
   status: import_zod.default.enum(["Customer", "Lead", "Active"]),
   date: import_zod.default.string(),
-  company: import_zod.default.string(),
+  isCorporative: import_zod.default.string(),
   email: import_zod.default.email(),
   phone: import_zod.default.string(),
-  nif: import_zod.default.string(),
+  nif: import_zod.default.string().nullable().optional(),
+  // password:  z.string(),
+  avatar: import_zod.default.string().nullable().optional()
+});
+var clientBodySchema = import_zod.default.object({
+  name: import_zod.default.string(),
+  role: import_zod.default.enum(["Client", "Commercial_Manager", "Admin"]),
+  status: import_zod.default.enum(["Customer", "Lead", "Active"]),
+  isCorporative: import_zod.default.string(),
+  email: import_zod.default.email(),
+  phone: import_zod.default.string(),
+  nif: import_zod.default.string().nullable().optional(),
   password: import_zod.default.string(),
   avatar: import_zod.default.string().nullable().optional()
 });
-var clientBodySchema = clientResponseSchema.omit({ id: true, date: true });
 async function clientsRoutes(app2) {
   app2.get("/", {
     preHandler: [app2.authenticate],
@@ -168,10 +190,23 @@ async function clientsRoutes(app2) {
         OR: [
           { name: { contains: q } },
           { email: { contains: q } },
-          { company: { contains: q } }
+          { isCorporative: { contains: q } }
         ]
       } : void 0,
-      orderBy: { name: "asc" }
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+        isCorporative: true,
+        nif: true,
+        avatar: true,
+        date: true
+        // ❌ password NÃO selecionado
+      }
     });
   });
   app2.get("/:id", {
@@ -187,7 +222,20 @@ async function clientsRoutes(app2) {
     }
   }, async (request, reply) => {
     const client = await prisma_default.client.findUnique({
-      where: { id: request.params.id }
+      where: { id: request.params.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+        isCorporative: true,
+        nif: true,
+        avatar: true,
+        date: true
+        // ❌ password NÃO selecionado
+      }
     });
     if (!client) return reply.status(404).send({ message: "Client not found" });
     return reply.status(200).send(client);
@@ -203,18 +251,19 @@ async function clientsRoutes(app2) {
       }
     }
   }, async (request, reply) => {
-    const { company, name, email, phone, role = import_client2.Role.Client, nif, password, avatar, status } = request.body;
+    const { isCorporative, name, email, phone, role = import_client2.Role.Client, nif, password, avatar, status } = request.body;
     const alreadyExists = await prisma_default.client.findFirst({ where: { email } });
     if (alreadyExists) return reply.status(400).send({ message: "Cliente j\xE1 existe!" });
+    const hashedPassword = await hashPassword(password);
     const client = await prisma_default.client.create({
       data: {
-        company,
+        isCorporative,
         name,
         email,
         phone,
         role,
-        nif,
-        password,
+        nif: nif || null,
+        password: hashedPassword,
         avatar: avatar ?? null,
         status,
         date: (/* @__PURE__ */ new Date()).toLocaleDateString("pt-PT")
@@ -235,14 +284,31 @@ async function clientsRoutes(app2) {
       }
     }
   }, async (request, reply) => {
-    console.log("Body recebido:", request.body);
     const client = await prisma_default.client.findUnique({
       where: { id: request.params.id }
     });
     if (!client) return reply.status(404).send({ message: "Client not found" });
+    const { password, ...restData } = request.body;
+    const updateData = { ...restData };
+    if (password) {
+      updateData.password = await hashPassword(password);
+    }
     await prisma_default.client.update({
       where: { id: request.params.id },
-      data: request.body
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+        isCorporative: true,
+        nif: true,
+        avatar: true,
+        date: true
+        // ❌ password NÃO retornado
+      }
     });
     return reply.status(200).send({ message: "Client updated successfully" });
   });
@@ -263,9 +329,27 @@ async function clientsRoutes(app2) {
       where: { id: request.params.id }
     });
     if (!client) return reply.status(404).send({ message: "Client not found" });
+    const { password, ...restData } = request.body;
+    const updateData = { ...restData };
+    if (password) {
+      updateData.password = await hashPassword(password);
+    }
     await prisma_default.client.update({
       where: { id: request.params.id },
-      data: request.body
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+        isCorporative: true,
+        nif: true,
+        avatar: true,
+        date: true
+        // ❌ password NÃO retornado
+      }
     });
     return reply.status(200).send({ message: "Client patched successfully" });
   });
@@ -460,17 +544,17 @@ var productSchema = import_zod3.default.object({
   quantity: import_zod3.default.number(),
   unit: import_zod3.default.string(),
   price: import_zod3.default.number(),
+  image: import_zod3.default.string(),
   banner: import_zod3.default.string(),
-  emoji: import_zod3.default.string(),
-  image: import_zod3.default.string()
+  emoji: import_zod3.default.string()
 });
 var clientSchema = import_zod3.default.object({
   id: import_zod3.default.string().uuid(),
   name: import_zod3.default.string(),
   email: import_zod3.default.string().email(),
   phone: import_zod3.default.string(),
-  company: import_zod3.default.string(),
-  nif: import_zod3.default.string(),
+  isCorporative: import_zod3.default.string(),
+  nif: import_zod3.default.string().nullable().optional(),
   status: import_zod3.default.string(),
   role: import_zod3.default.string(),
   avatar: import_zod3.default.string().nullable()
@@ -528,19 +612,32 @@ async function ordersRoutes(app2) {
       tags: ["orders"],
       description: "List all orders",
       querystring: import_zod3.default.object({
-        q: import_zod3.default.string().optional()
+        q: import_zod3.default.string().optional(),
+        from: import_zod3.default.string().optional(),
+        to: import_zod3.default.string().optional(),
+        status: orderResponseSchema.shape.status.optional()
       }),
       response: { 200: import_zod3.default.array(orderResponseSchema) }
     }
   }, async (req) => {
-    const { q } = req.query;
+    const { q, from, to, status } = req.query;
+    const dateFilter = from || to ? {
+      date: {
+        ...from && { gte: from },
+        ...to && { lte: to }
+      }
+    } : {};
     return prisma_default.order.findMany({
-      where: q ? {
-        OR: [
-          { client: { name: { contains: q } } },
-          { client: { company: { contains: q } } }
-        ]
-      } : void 0,
+      where: {
+        ...q && {
+          OR: [
+            { client: { name: { contains: q } } },
+            { client: { isCorporative: { contains: q } } }
+          ]
+        },
+        ...status && { status },
+        ...dateFilter
+      },
       include: orderInclude,
       orderBy: { number: "asc" }
     });
@@ -586,6 +683,14 @@ async function ordersRoutes(app2) {
         items: { create: items }
       }
     });
+    await Promise.all(
+      items.map(async (item) => {
+        await prisma_default.product.update({
+          where: { id: item.productId },
+          data: { quantity: { decrement: item.quantity } }
+        });
+      })
+    );
     return reply.status(201).send({ id: order.id });
   });
   app2.put("/:id", {
@@ -702,7 +807,8 @@ var stockResponseSchema = import_zod4.default.object({
     name: import_zod4.default.string(),
     category: categorySchema,
     unit: import_zod4.default.string(),
-    price: import_zod4.default.number()
+    price: import_zod4.default.number(),
+    image: import_zod4.default.string().optional()
   }).optional()
 });
 var stockBodySchema = import_zod4.default.object({
@@ -740,7 +846,8 @@ async function stockRoutes(app2) {
             name: true,
             category: true,
             unit: true,
-            price: true
+            price: true,
+            image: true
           }
         }
       }
@@ -770,7 +877,8 @@ async function stockRoutes(app2) {
             name: true,
             category: true,
             unit: true,
-            price: true
+            price: true,
+            image: true
           }
         }
       }
@@ -1171,18 +1279,8 @@ async function productsRoutes(app2) {
     return await prisma_default.product.findMany({
       where: q ? {
         OR: [
-          {
-            name: {
-              contains: q
-            }
-          },
-          {
-            category: {
-              name: {
-                contains: q
-              }
-            }
-          }
+          { name: { contains: q } },
+          { category: { name: { contains: q } } }
         ]
       } : void 0,
       include: {
@@ -1442,26 +1540,52 @@ async function productsRoutes(app2) {
 }
 
 // src/controllers/authenticantion/index.ts
+var import_zod7 = __toESM(require("zod"));
 async function authRoutes(app2) {
-  app2.post("/login", async (request, reply) => {
-    const { email, password } = request.body;
-    const user = await prisma_default.client.findUnique({
-      where: { email }
-    });
-    if (!user) {
-      return reply.status(400).send({ error: "User not found" });
+  app2.post(
+    "/login",
+    {
+      schema: {
+        tags: ["auth"],
+        description: "Login de utilizador",
+        body: import_zod7.default.object({
+          email: import_zod7.default.string().email(),
+          password: import_zod7.default.string().min(1)
+        }),
+        response: {
+          200: import_zod7.default.object({ token: import_zod7.default.string() }),
+          400: import_zod7.default.object({ error: import_zod7.default.string() })
+        }
+      }
+    },
+    async (request, reply) => {
+      const { email, password } = request.body;
+      const user = await prisma_default.client.findUnique({
+        where: { email }
+      });
+      if (!user) {
+        return reply.status(400).send({ error: "User not found" });
+      }
+      const isValid = await comparePassword(password, user.password);
+      if (!isValid) {
+        return reply.status(400).send({ error: "Invalid password" });
+      }
+      const token = app2.jwt.sign({
+        sub: user.id,
+        email: user.email,
+        role: user.role
+      });
+      return {
+        token,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role
+        }
+      };
     }
-    const isValid = await password === user.password;
-    if (!isValid) {
-      return reply.status(400).send({ error: "Invalid password" });
-    }
-    const token = app2.jwt.sign({
-      sub: user.id,
-      email: user.email,
-      role: user.role
-    });
-    return { token };
-  });
+  );
   app2.get("/me", { preHandler: [app2.authenticate] }, async (req, replay) => {
     const clientId = req.user.sub;
     const client = await prisma_default.client.findUnique({
@@ -1470,7 +1594,11 @@ async function authRoutes(app2) {
         id: true,
         name: true,
         email: true,
-        role: true
+        role: true,
+        phone: true,
+        isCorporative: true,
+        nif: true,
+        avatar: true
       }
     });
     if (!client) {
@@ -1484,14 +1612,14 @@ async function authRoutes(app2) {
 }
 
 // src/controllers/paypemnts/index.ts
-var import_zod7 = __toESM(require("zod"));
+var import_zod8 = __toESM(require("zod"));
 var import_stripe = __toESM(require("stripe"));
 var stripe = new import_stripe.default(process.env.STRIPE_SECRET_KEY);
-var checkoutResponseSchema = import_zod7.default.object({
-  checkoutUrl: import_zod7.default.string().url()
+var checkoutResponseSchema = import_zod8.default.object({
+  checkoutUrl: import_zod8.default.string().url()
 });
-var checkoutParamsSchema = import_zod7.default.object({
-  id: import_zod7.default.string().uuid()
+var checkoutParamsSchema = import_zod8.default.object({
+  id: import_zod8.default.string().uuid()
 });
 async function checkoutRoutes(app2) {
   app2.post("/:id/checkout", {
@@ -1502,9 +1630,9 @@ async function checkoutRoutes(app2) {
       params: checkoutParamsSchema,
       response: {
         200: checkoutResponseSchema,
-        400: import_zod7.default.object({ message: import_zod7.default.string() }),
-        403: import_zod7.default.object({ message: import_zod7.default.string() }),
-        404: import_zod7.default.object({ message: import_zod7.default.string() })
+        400: import_zod8.default.object({ message: import_zod8.default.string() }),
+        403: import_zod8.default.object({ message: import_zod8.default.string() }),
+        404: import_zod8.default.object({ message: import_zod8.default.string() })
       }
     }
   }, async (request, reply) => {
@@ -1529,7 +1657,7 @@ async function checkoutRoutes(app2) {
       payment_method_types: ["card"],
       line_items: order.items.map((item) => ({
         price_data: {
-          currency: "usd",
+          currency: "aoa",
           product_data: {
             name: item.product.name
           },
@@ -1540,8 +1668,8 @@ async function checkoutRoutes(app2) {
       metadata: {
         orderId: order.id
       },
-      success_url: "http://localhost:5173/success?session_id={CHECKOUT_SESSION_ID}",
-      cancel_url: "http://localhost:5173/cancel"
+      success_url: "http://localhost:3000/success?session_id={CHECKOUT_SESSION_ID}",
+      cancel_url: "http://localhost:3000/cancel"
     });
     await prisma_default.order.update({
       where: { id },
@@ -1556,26 +1684,26 @@ async function checkoutRoutes(app2) {
 }
 
 // src/controllers/print/estock.ts
-var import_zod8 = __toESM(require("zod"));
-var stockStatusEnum2 = import_zod8.default.enum([
+var import_zod9 = __toESM(require("zod"));
+var stockStatusEnum2 = import_zod9.default.enum([
   "Em_Estoque",
   "Estoque_Medio",
   "Estoque_Baixo"
 ]);
-var stockPrintSchema = import_zod8.default.object({
-  id: import_zod8.default.string().uuid(),
-  quantity: import_zod8.default.number(),
-  value_Total: import_zod8.default.number(),
+var stockPrintSchema = import_zod9.default.object({
+  id: import_zod9.default.string().uuid(),
+  quantity: import_zod9.default.number(),
+  value_Total: import_zod9.default.number(),
   status: stockStatusEnum2,
-  product: import_zod8.default.object({
-    name: import_zod8.default.string(),
-    category: import_zod8.default.object({
-      id: import_zod8.default.string().uuid(),
-      name: import_zod8.default.string(),
-      description: import_zod8.default.string().nullable()
+  product: import_zod9.default.object({
+    name: import_zod9.default.string(),
+    category: import_zod9.default.object({
+      id: import_zod9.default.string().uuid(),
+      name: import_zod9.default.string(),
+      description: import_zod9.default.string().nullable()
     }),
-    unit: import_zod8.default.string(),
-    price: import_zod8.default.number()
+    unit: import_zod9.default.string(),
+    price: import_zod9.default.number()
   }).optional()
 });
 async function stockPrintRoutes(app2) {
@@ -1584,7 +1712,7 @@ async function stockPrintRoutes(app2) {
     schema: {
       tags: ["print"],
       response: {
-        200: import_zod8.default.array(stockPrintSchema)
+        200: import_zod9.default.array(stockPrintSchema)
       }
     }
   }, async () => {
@@ -1608,24 +1736,24 @@ async function stockPrintRoutes(app2) {
 }
 
 // src/controllers/print/shopping.ts
-var import_zod9 = __toESM(require("zod"));
-var shoppingResponseSchema2 = import_zod9.default.object({
-  id: import_zod9.default.string().uuid(),
-  number: import_zod9.default.number().int(),
-  supplierId: import_zod9.default.string().uuid(),
-  date: import_zod9.default.string(),
-  total: import_zod9.default.number(),
-  status: import_zod9.default.boolean(),
-  supplier: import_zod9.default.object({
-    id: import_zod9.default.string().uuid(),
-    name: import_zod9.default.string(),
-    company: import_zod9.default.string()
+var import_zod10 = __toESM(require("zod"));
+var shoppingResponseSchema2 = import_zod10.default.object({
+  id: import_zod10.default.string().uuid(),
+  number: import_zod10.default.number().int(),
+  supplierId: import_zod10.default.string().uuid(),
+  date: import_zod10.default.string(),
+  total: import_zod10.default.number(),
+  status: import_zod10.default.boolean(),
+  supplier: import_zod10.default.object({
+    id: import_zod10.default.string().uuid(),
+    name: import_zod10.default.string(),
+    company: import_zod10.default.string()
   }),
-  items: import_zod9.default.array(import_zod9.default.object({
-    id: import_zod9.default.string().uuid(),
-    name: import_zod9.default.string(),
-    quantity: import_zod9.default.number().int(),
-    price: import_zod9.default.number()
+  items: import_zod10.default.array(import_zod10.default.object({
+    id: import_zod10.default.string().uuid(),
+    name: import_zod10.default.string(),
+    quantity: import_zod10.default.number().int(),
+    price: import_zod10.default.number()
   }))
 });
 async function shoppingPrintRoutes(app2) {
@@ -1634,7 +1762,7 @@ async function shoppingPrintRoutes(app2) {
     schema: {
       tags: ["print"],
       description: "List all shopping orders",
-      response: { 200: import_zod9.default.array(shoppingResponseSchema2) }
+      response: { 200: import_zod10.default.array(shoppingResponseSchema2) }
     }
   }, async () => {
     return await prisma_default.shopping.findMany({
@@ -1648,18 +1776,18 @@ async function shoppingPrintRoutes(app2) {
 }
 
 // src/controllers/print/suppliers.ts
-var import_zod10 = __toESM(require("zod"));
-var supplierResponseSchema2 = import_zod10.default.object({
-  id: import_zod10.default.string().uuid(),
-  name: import_zod10.default.string(),
-  role: import_zod10.default.string(),
-  status: import_zod10.default.enum(["Customer", "Lead", "Active"]),
-  date: import_zod10.default.string(),
-  company: import_zod10.default.string(),
-  email: import_zod10.default.string(),
-  phone: import_zod10.default.string(),
-  nif: import_zod10.default.string(),
-  avatar: import_zod10.default.string().nullable().optional()
+var import_zod11 = __toESM(require("zod"));
+var supplierResponseSchema2 = import_zod11.default.object({
+  id: import_zod11.default.string().uuid(),
+  name: import_zod11.default.string(),
+  role: import_zod11.default.string(),
+  status: import_zod11.default.enum(["Customer", "Lead", "Active"]),
+  date: import_zod11.default.string(),
+  company: import_zod11.default.string(),
+  email: import_zod11.default.string(),
+  phone: import_zod11.default.string(),
+  nif: import_zod11.default.string(),
+  avatar: import_zod11.default.string().nullable().optional()
 });
 async function supplierPrintRoutes(app2) {
   app2.get("/", {
@@ -1667,7 +1795,7 @@ async function supplierPrintRoutes(app2) {
     schema: {
       tags: ["print"],
       description: "List all suppliers",
-      response: { 200: import_zod10.default.array(supplierResponseSchema2) }
+      response: { 200: import_zod11.default.array(supplierResponseSchema2) }
     }
   }, async () => {
     return await prisma_default.supplier.findMany({
@@ -1677,23 +1805,23 @@ async function supplierPrintRoutes(app2) {
 }
 
 // src/controllers/print/product.ts
-var import_zod11 = __toESM(require("zod"));
+var import_zod12 = __toESM(require("zod"));
 var import_multipart2 = __toESM(require("@fastify/multipart"));
-var productResponseSchema2 = import_zod11.default.object({
-  id: import_zod11.default.string().uuid(),
-  name: import_zod11.default.string().min(1),
-  categoryId: import_zod11.default.string().uuid(),
-  category: import_zod11.default.object({
-    id: import_zod11.default.string(),
-    name: import_zod11.default.string(),
-    description: import_zod11.default.string().nullable()
+var productResponseSchema2 = import_zod12.default.object({
+  id: import_zod12.default.string().uuid(),
+  name: import_zod12.default.string().min(1),
+  categoryId: import_zod12.default.string().uuid(),
+  category: import_zod12.default.object({
+    id: import_zod12.default.string(),
+    name: import_zod12.default.string(),
+    description: import_zod12.default.string().nullable()
   }),
-  unit: import_zod11.default.string(),
-  price: import_zod11.default.number().positive(),
-  quantity: import_zod11.default.number().int(),
-  banner: import_zod11.default.string().min(1),
-  emoji: import_zod11.default.string().min(1),
-  image: import_zod11.default.string()
+  unit: import_zod12.default.string(),
+  price: import_zod12.default.number().positive(),
+  quantity: import_zod12.default.number().int(),
+  banner: import_zod12.default.string().min(1),
+  emoji: import_zod12.default.string().min(1),
+  image: import_zod12.default.string()
 });
 async function productsPrintRoutes(app2) {
   await app2.register(import_multipart2.default);
@@ -1701,7 +1829,7 @@ async function productsPrintRoutes(app2) {
     preHandler: [app2.authenticate],
     schema: {
       tags: ["print"],
-      response: { 200: import_zod11.default.array(productResponseSchema2) }
+      response: { 200: import_zod12.default.array(productResponseSchema2) }
     }
   }, async () => {
     return await prisma_default.product.findMany({
@@ -1714,58 +1842,58 @@ async function productsPrintRoutes(app2) {
 }
 
 // src/controllers/print/orders.ts
-var import_zod12 = __toESM(require("zod"));
-var productSchema2 = import_zod12.default.object({
-  id: import_zod12.default.string().uuid(),
-  name: import_zod12.default.string(),
-  category: import_zod12.default.object({
-    id: import_zod12.default.string().uuid(),
-    name: import_zod12.default.string()
+var import_zod13 = __toESM(require("zod"));
+var productSchema2 = import_zod13.default.object({
+  id: import_zod13.default.string().uuid(),
+  name: import_zod13.default.string(),
+  category: import_zod13.default.object({
+    id: import_zod13.default.string().uuid(),
+    name: import_zod13.default.string()
   }),
-  categoryId: import_zod12.default.string(),
-  quantity: import_zod12.default.number(),
-  unit: import_zod12.default.string(),
-  price: import_zod12.default.number(),
-  banner: import_zod12.default.string(),
-  emoji: import_zod12.default.string(),
-  image: import_zod12.default.string()
+  categoryId: import_zod13.default.string(),
+  quantity: import_zod13.default.number(),
+  unit: import_zod13.default.string(),
+  price: import_zod13.default.number(),
+  banner: import_zod13.default.string(),
+  emoji: import_zod13.default.string(),
+  image: import_zod13.default.string()
 });
-var clientSchema2 = import_zod12.default.object({
-  id: import_zod12.default.string().uuid(),
-  name: import_zod12.default.string(),
-  email: import_zod12.default.string().email(),
-  phone: import_zod12.default.string(),
-  company: import_zod12.default.string(),
-  nif: import_zod12.default.string(),
-  status: import_zod12.default.string(),
-  role: import_zod12.default.string(),
-  avatar: import_zod12.default.string().nullable()
+var clientSchema2 = import_zod13.default.object({
+  id: import_zod13.default.string().uuid(),
+  name: import_zod13.default.string(),
+  email: import_zod13.default.string().email(),
+  phone: import_zod13.default.string(),
+  isCorporative: import_zod13.default.string(),
+  nif: import_zod13.default.string().nullable().optional(),
+  status: import_zod13.default.string(),
+  role: import_zod13.default.string(),
+  avatar: import_zod13.default.string().nullable()
 });
-var orderItemSchema2 = import_zod12.default.object({
-  quantity: import_zod12.default.number().min(1),
-  price: import_zod12.default.number().min(0),
-  productId: import_zod12.default.string().uuid()
+var orderItemSchema2 = import_zod13.default.object({
+  quantity: import_zod13.default.number().min(1),
+  price: import_zod13.default.number().min(0),
+  productId: import_zod13.default.string().uuid()
 });
 var orderItemFullSchema2 = orderItemSchema2.extend({
-  id: import_zod12.default.string().uuid(),
-  orderId: import_zod12.default.string().uuid(),
+  id: import_zod13.default.string().uuid(),
+  orderId: import_zod13.default.string().uuid(),
   product: productSchema2
 });
-var orderResponseSchema2 = import_zod12.default.object({
-  id: import_zod12.default.string().uuid(),
-  number: import_zod12.default.number(),
-  date: import_zod12.default.string(),
-  total: import_zod12.default.number().min(0),
-  status: import_zod12.default.enum([
+var orderResponseSchema2 = import_zod13.default.object({
+  id: import_zod13.default.string().uuid(),
+  number: import_zod13.default.number(),
+  date: import_zod13.default.string(),
+  total: import_zod13.default.number().min(0),
+  status: import_zod13.default.enum([
     "Pendente",
     "Confirmado",
     "Em_processamento",
     "Enviado",
     "Entregue"
   ]),
-  clientId: import_zod12.default.string().uuid(),
+  clientId: import_zod13.default.string().uuid(),
   client: clientSchema2,
-  items: import_zod12.default.array(orderItemFullSchema2).min(1)
+  items: import_zod13.default.array(orderItemFullSchema2).min(1)
 });
 var orderInclude2 = {
   items: {
@@ -1784,28 +1912,76 @@ async function ordersPrintRoutes(app2) {
     preHandler: [app2.authenticate],
     schema: {
       tags: ["print"],
-      description: "List all orders",
-      response: { 200: import_zod12.default.array(orderResponseSchema2) }
+      description: "List orders for report (respects q/status/from/to filters when provided)",
+      querystring: import_zod13.default.object({
+        q: import_zod13.default.string().optional(),
+        status: orderResponseSchema2.shape.status.optional(),
+        from: import_zod13.default.string().optional(),
+        to: import_zod13.default.string().optional()
+      }),
+      response: { 200: import_zod13.default.array(orderResponseSchema2) }
     }
-  }, async () => {
-    return prisma_default.order.findMany({ include: orderInclude2 });
+  }, async (request) => {
+    const { q, status, from, to } = request.query;
+    const dateFilter = from || to ? {
+      date: {
+        ...from && { gte: from },
+        ...to && { lte: to }
+      }
+    } : {};
+    return prisma_default.order.findMany({
+      where: {
+        ...q && {
+          OR: [
+            { client: { name: { contains: q } } },
+            { client: { isCorporative: { contains: q } } }
+          ]
+        },
+        ...status && { status },
+        ...dateFilter
+      },
+      include: orderInclude2,
+      orderBy: { number: "asc" }
+    });
+  });
+  app2.get("/:id", {
+    preHandler: [app2.authenticate],
+    schema: {
+      tags: ["print"],
+      description: "Get single order for receipt",
+      params: import_zod13.default.object({ id: import_zod13.default.string().uuid() }),
+      response: {
+        200: orderResponseSchema2,
+        404: import_zod13.default.object({ message: import_zod13.default.string() })
+      }
+    }
+  }, async (request, reply) => {
+    const { id } = request.params;
+    const order = await prisma_default.order.findUnique({
+      where: { id },
+      include: orderInclude2
+    });
+    if (!order) {
+      return reply.status(404).send({ message: "Pedido n\xE3o encontrado" });
+    }
+    return order;
   });
 }
 
 // src/controllers/print/client.ts
-var import_zod13 = __toESM(require("zod"));
-var clientResponseSchema2 = import_zod13.default.object({
-  id: import_zod13.default.string().uuid(),
-  name: import_zod13.default.string(),
-  role: import_zod13.default.enum(["Client", "Supplier", "Admin"]),
-  status: import_zod13.default.enum(["Customer", "Lead", "Active"]),
-  date: import_zod13.default.string(),
-  company: import_zod13.default.string(),
-  email: import_zod13.default.email(),
-  phone: import_zod13.default.string(),
-  nif: import_zod13.default.string(),
-  password: import_zod13.default.string(),
-  avatar: import_zod13.default.string().nullable().optional()
+var import_zod14 = __toESM(require("zod"));
+var clientResponseSchema2 = import_zod14.default.object({
+  id: import_zod14.default.string().uuid(),
+  name: import_zod14.default.string(),
+  role: import_zod14.default.enum(["Client", "Commercial_Manager", "Admin"]),
+  status: import_zod14.default.enum(["Customer", "Lead", "Active"]),
+  date: import_zod14.default.string(),
+  isCorporative: import_zod14.default.string(),
+  email: import_zod14.default.email(),
+  phone: import_zod14.default.string(),
+  nif: import_zod14.default.string().nullable().optional(),
+  password: import_zod14.default.string(),
+  avatar: import_zod14.default.string().nullable().optional()
 });
 async function clientsPrintRoutes(app2) {
   app2.get("/", {
@@ -1813,7 +1989,7 @@ async function clientsPrintRoutes(app2) {
     schema: {
       tags: ["print"],
       description: "List all clients",
-      response: { 200: import_zod13.default.array(clientResponseSchema2) }
+      response: { 200: import_zod14.default.array(clientResponseSchema2) }
     }
   }, async () => {
     return await prisma_default.client.findMany({
@@ -1823,15 +1999,15 @@ async function clientsPrintRoutes(app2) {
 }
 
 // src/controllers/category/index.ts
-var import_zod14 = __toESM(require("zod"));
-var categorySchema3 = import_zod14.default.object({
-  id: import_zod14.default.string().uuid(),
-  name: import_zod14.default.string(),
-  description: import_zod14.default.string().nullable()
+var import_zod15 = __toESM(require("zod"));
+var categorySchema3 = import_zod15.default.object({
+  id: import_zod15.default.string().uuid(),
+  name: import_zod15.default.string(),
+  description: import_zod15.default.string().nullable()
 });
-var categoryBodySchema = import_zod14.default.object({
-  name: import_zod14.default.string().min(2),
-  description: import_zod14.default.string().optional()
+var categoryBodySchema = import_zod15.default.object({
+  name: import_zod15.default.string().min(2),
+  description: import_zod15.default.string().optional()
 });
 async function categoriesRoutes(app2) {
   app2.get("/", {
@@ -1839,7 +2015,7 @@ async function categoriesRoutes(app2) {
       tags: ["categories"],
       description: "List all categories",
       response: {
-        200: import_zod14.default.array(categorySchema3)
+        200: import_zod15.default.array(categorySchema3)
       }
     }
   }, async () => {
@@ -1859,13 +2035,13 @@ async function categoriesRoutes(app2) {
     schema: {
       tags: ["categories"],
       description: "Get category by ID",
-      params: import_zod14.default.object({
-        id: import_zod14.default.string().uuid()
+      params: import_zod15.default.object({
+        id: import_zod15.default.string().uuid()
       }),
       response: {
         200: categorySchema3,
-        404: import_zod14.default.object({
-          message: import_zod14.default.string()
+        404: import_zod15.default.object({
+          message: import_zod15.default.string()
         })
       }
     }
@@ -1893,11 +2069,11 @@ async function categoriesRoutes(app2) {
       description: "Create category",
       body: categoryBodySchema,
       response: {
-        201: import_zod14.default.object({
-          id: import_zod14.default.string().uuid()
+        201: import_zod15.default.object({
+          id: import_zod15.default.string().uuid()
         }),
-        400: import_zod14.default.object({
-          message: import_zod14.default.string()
+        400: import_zod15.default.object({
+          message: import_zod15.default.string()
         })
       }
     }
@@ -1923,16 +2099,16 @@ async function categoriesRoutes(app2) {
     schema: {
       tags: ["categories"],
       description: "Update category",
-      params: import_zod14.default.object({
-        id: import_zod14.default.string().uuid()
+      params: import_zod15.default.object({
+        id: import_zod15.default.string().uuid()
       }),
       body: categoryBodySchema,
       response: {
-        200: import_zod14.default.object({
-          message: import_zod14.default.string()
+        200: import_zod15.default.object({
+          message: import_zod15.default.string()
         }),
-        404: import_zod14.default.object({
-          message: import_zod14.default.string()
+        404: import_zod15.default.object({
+          message: import_zod15.default.string()
         })
       }
     }
@@ -1960,16 +2136,16 @@ async function categoriesRoutes(app2) {
     schema: {
       tags: ["categories"],
       description: "Patch category",
-      params: import_zod14.default.object({
-        id: import_zod14.default.string().uuid()
+      params: import_zod15.default.object({
+        id: import_zod15.default.string().uuid()
       }),
       body: categoryBodySchema.partial(),
       response: {
-        200: import_zod14.default.object({
-          message: import_zod14.default.string()
+        200: import_zod15.default.object({
+          message: import_zod15.default.string()
         }),
-        404: import_zod14.default.object({
-          message: import_zod14.default.string()
+        404: import_zod15.default.object({
+          message: import_zod15.default.string()
         })
       }
     }
@@ -1996,18 +2172,18 @@ async function categoriesRoutes(app2) {
     schema: {
       tags: ["categories"],
       description: "Delete category",
-      params: import_zod14.default.object({
-        id: import_zod14.default.string().uuid()
+      params: import_zod15.default.object({
+        id: import_zod15.default.string().uuid()
       }),
       response: {
-        200: import_zod14.default.object({
-          message: import_zod14.default.string()
+        200: import_zod15.default.object({
+          message: import_zod15.default.string()
         }),
-        404: import_zod14.default.object({
-          message: import_zod14.default.string()
+        404: import_zod15.default.object({
+          message: import_zod15.default.string()
         }),
-        400: import_zod14.default.object({
-          message: import_zod14.default.string()
+        400: import_zod15.default.object({
+          message: import_zod15.default.string()
         })
       }
     }
@@ -2036,6 +2212,120 @@ async function categoriesRoutes(app2) {
   });
 }
 
+// src/controllers/dashboard/index.ts
+var import_zod16 = __toESM(require("zod"));
+async function dashboardRoutes(app2) {
+  app2.get("/", {
+    preHandler: [app2.authenticate],
+    schema: {
+      tags: ["dashboard"],
+      description: "Get dashboard overview data",
+      response: {
+        200: import_zod16.default.object({
+          receita_total: import_zod16.default.number(),
+          total_pedidos: import_zod16.default.number(),
+          total_compras: import_zod16.default.number(),
+          estoque_baixo: import_zod16.default.number(),
+          atividades: import_zod16.default.array(import_zod16.default.object({
+            tipo: import_zod16.default.string(),
+            descricao: import_zod16.default.string(),
+            data: import_zod16.default.string()
+          }))
+        })
+      }
+    }
+  }, async (req, reply) => {
+    const pedidos = await prisma_default.order.aggregate({
+      _sum: { total: true },
+      _count: { id: true }
+    });
+    const compras = await prisma_default.shopping.aggregate({
+      _count: { id: true }
+    });
+    const estoqueBaixo = await prisma_default.stock.count({
+      where: { status: "Estoque_Baixo" }
+    });
+    const [ultimosPedidos, ultimasCompras, ultimosStocks] = await Promise.all([
+      prisma_default.order.findMany({
+        take: 3,
+        orderBy: { date: "desc" },
+        include: { client: { select: { name: true } } }
+      }),
+      prisma_default.shopping.findMany({
+        take: 3,
+        orderBy: { number: "desc" },
+        include: { supplier: { select: { name: true } } }
+      }),
+      prisma_default.stock.findMany({
+        take: 3,
+        where: { status: { in: ["Estoque_Baixo", "Estoque_Medio"] } },
+        include: { product: { select: { name: true } } },
+        orderBy: { id: "desc" }
+      })
+    ]);
+    const atividades = [
+      ...ultimosPedidos.map((p) => ({
+        tipo: "pedido",
+        descricao: `Novo pedido recebido de ${p.client?.name ?? "cliente"}`,
+        data: p.date
+      })),
+      ...ultimasCompras.map((c) => ({
+        tipo: "compra",
+        descricao: `Compra COM-${String(c.number).padStart(6, "0")} confirmada com fornecedor ${c.supplier?.name ?? ""}`,
+        data: c.date
+      })),
+      ...ultimosStocks.map((s) => ({
+        tipo: "estoque",
+        descricao: `Estoque de ${s.product?.name ?? "produto"} abaixo do limite`,
+        data: (/* @__PURE__ */ new Date()).toLocaleDateString("pt-PT")
+      }))
+    ].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()).slice(0, 6);
+    return reply.send({
+      receita_total: pedidos._sum.total ?? 0,
+      total_pedidos: pedidos._count.id ?? 0,
+      total_compras: compras._count.id ?? 0,
+      estoque_baixo: estoqueBaixo ?? 0,
+      atividades
+    });
+  });
+  app2.get("/chart", {
+    schema: {
+      tags: ["dashboard"],
+      description: "Get monthly revenue chart data",
+      response: {
+        200: import_zod16.default.array(import_zod16.default.object({
+          mes: import_zod16.default.string(),
+          total: import_zod16.default.number()
+        }))
+      }
+    }
+  }, async (req, reply) => {
+    const pedidos = await prisma_default.order.findMany({
+      select: { date: true, total: true }
+    });
+    const porMes = {};
+    for (const pedido of pedidos) {
+      const raw = pedido.date;
+      let chave = null;
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) {
+        const [dd, mm, yyyy] = raw.split("/");
+        chave = `${yyyy}-${mm}`;
+      } else if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
+        chave = raw.substring(0, 7);
+      } else if (raw.includes("T")) {
+        chave = raw.substring(0, 7);
+      }
+      if (!chave) {
+        console.warn("Formato de data desconhecido:", raw);
+        continue;
+      }
+      porMes[chave] = (porMes[chave] ?? 0) + pedido.total;
+    }
+    const resultado = Object.entries(porMes).sort(([a], [b]) => a.localeCompare(b)).map(([mes, total]) => ({ mes, total }));
+    return reply.send(resultado);
+  });
+}
+
 // src/routes/routes.ts
 function registerRoutes(app2) {
   app2.register(authRoutes, { prefix: "/auth" });
@@ -2053,6 +2343,7 @@ function registerRoutes(app2) {
   app2.register(productsPrintRoutes, { prefix: "/products/print" });
   app2.register(ordersPrintRoutes, { prefix: "/orders/print" });
   app2.register(clientsPrintRoutes, { prefix: "/clients/print" });
+  app2.register(dashboardRoutes, { prefix: "/dashboard" });
 }
 
 // src/server.ts
@@ -2090,6 +2381,20 @@ app.register(import_swagger.default, {
       title: "Api fazenda",
       version: "1.0.0"
     }
+  },
+  transform: ({ schema, url }) => {
+    if (schema?.querystring) {
+      schema = {
+        ...schema,
+        querystring: {
+          type: "object",
+          properties: {
+            q: { type: "string", description: "Pesquisar" }
+          }
+        }
+      };
+    }
+    return { schema, url };
   }
 });
 app.register(import_swagger_ui.default, {

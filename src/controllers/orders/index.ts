@@ -14,9 +14,9 @@ const productSchema = z.object({
   quantity: z.number(),
   unit:     z.string(),
   price:    z.number(),
+  image:    z.string(),
   banner:   z.string(),
   emoji:    z.string(),
-  image:    z.string(),
 })
 
 const clientSchema = z.object({
@@ -85,7 +85,6 @@ const orderInclude = {
 
 export async function ordersRoutes(app: FastifyTypeInstance) {
 
- //get all
   app.get("/", {
   preHandler: [app.authenticate],
   schema: {
@@ -93,19 +92,34 @@ export async function ordersRoutes(app: FastifyTypeInstance) {
     description: "List all orders",
     querystring: z.object({
       q: z.string().optional(),
+      from: z.string().optional(),
+      to: z.string().optional(),
+      status: orderResponseSchema.shape.status.optional(),
     }),
     response: { 200: z.array(orderResponseSchema) }
   }
 }, async (req) => {
-  const { q } = req.query
+  const { q , from , to, status} = req.query
+
+  const dateFilter = from || to ? {
+    date: {
+      ...(from && { gte: from }),
+      ...(to && { lte: to }),
+    }
+  } : {}
+
 
   return prisma.order.findMany({
-    where: q ? {
-      OR: [
-        { client: { name:    { contains: q } } },
-        { client: { isCorporative: { contains: q } } },
-      ],
-    } : undefined,
+    where: {
+      ...(q && {
+        OR: [
+          { client: { name:    { contains: q } } },
+          { client: { isCorporative: { contains: q } } },
+        ],
+      }),
+      ...(status && { status }),
+      ...dateFilter,
+    },
     include: orderInclude,
     orderBy: { number: "asc" }
   })

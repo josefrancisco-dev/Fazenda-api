@@ -79,11 +79,39 @@ export async function ordersPrintRoutes(app: FastifyTypeInstance) {
     preHandler: [app.authenticate],
     schema: {
       tags: ["print"],
-      description: "List all orders",
+      description: "List orders for report (respects q/status/from/to filters when provided)",
+      querystring: z.object({
+        q: z.string().optional(),
+        status: orderResponseSchema.shape.status.optional(),
+        from: z.string().optional(),
+        to: z.string().optional(),
+      }),
       response: { 200: z.array(orderResponseSchema) }
     }
-  }, async () => {
-    return prisma.order.findMany({ include: orderInclude })
+  }, async (request) => {
+    const { q, status, from, to } = request.query
+
+    const dateFilter = from || to ? {
+      date: {
+        ...(from && { gte: from }),
+        ...(to && { lte: to }),
+      }
+    } : {}
+
+    return prisma.order.findMany({
+      where: {
+        ...(q && {
+          OR: [
+            { client: { name: { contains: q } } },
+            { client: { isCorporative: { contains: q } } },
+          ],
+        }),
+        ...(status && { status }),
+        ...dateFilter,
+      },
+      include: orderInclude,
+      orderBy: { number: "asc" }
+    })
   })
 
 app.get("/:id", {
